@@ -89,7 +89,8 @@ export default function MatchWaitingPage() {
               members?: Record<string, { joinedAt?: unknown; nickname?: string }>;
             };
 
-            const currentCount = data.memberCount ?? data.memberIds?.length ?? 0;
+            const currentMembers = data.memberIds ?? [];
+            const currentCount = data.memberCount ?? currentMembers.length;
             if (currentCount < 1) {
               invalidMatch = true;
               tx.update(matchRef, {
@@ -99,7 +100,10 @@ export default function MatchWaitingPage() {
               });
               return;
             }
-            if (currentCount >= 2) throw new Error("already full");
+            if (currentCount >= 2) {
+              invalidMatch = true;
+              return;
+            }
 
             const nextMemberIds = currentMembers.includes(user.uid)
               ? currentMembers
@@ -303,16 +307,6 @@ export default function MatchWaitingPage() {
           <span style={statusTextStyle}>{state.toUpperCase()}</span>
         </div>
 
-        <button
-          onClick={handleStart}
-          disabled={state !== "matched"}
-          style={{
-            ...primaryButtonStyle,
-            opacity: state === "matched" ? 1 : 0.5,
-          }}
-        >
-          ゲームを開始
-        </button>
       </div>
     </div>
   );

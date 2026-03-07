@@ -39,7 +39,7 @@ function drawRayAt(
   ctx.drawImage(img, x, y, w, DRAW_H);
 }
 
-export default function RayStack({ onFinished }: { onFinished?: () => void }) {
+export default function RayStack({ onFinished }: { onFinished?: (score: number) => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -64,12 +64,15 @@ export default function RayStack({ onFinished }: { onFinished?: () => void }) {
     timeLeft: TIME_LIMIT, // 残り時間（秒）
   });
 
-  // stingray.png を事前ロード
+  // stingray.png を事前ロード（対戦モードは画像ロード後に即ゲーム開始）
   useEffect(() => {
     const img = new Image();
     img.src = stingraySrc;
-    img.onload = () => { imgRef.current = img; };
-  }, []);
+    img.onload = () => {
+      imgRef.current = img;
+      if (onFinished) initGame();
+    };
+  }, [onFinished]);
 
   // ゲーム初期化
   const initGame = () => {
@@ -245,7 +248,7 @@ export default function RayStack({ onFinished }: { onFinished?: () => void }) {
 
   useEffect(() => {
     if (phase === "gameover") {
-      onFinished?.();
+      onFinished?.(score);
     }
   }, [onFinished, phase]);
 
@@ -343,7 +346,7 @@ export default function RayStack({ onFinished }: { onFinished?: () => void }) {
           style={canvasStyle}
         />
 
-        {phase !== "playing" && phase !== "collapsing" && (
+        {phase !== "playing" && phase !== "collapsing" && !(phase === "gameover" && onFinished) && (
           <div style={overlayStyle}>
             {phase === "ready" && (
               <>

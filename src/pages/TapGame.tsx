@@ -5,12 +5,12 @@ import { useWaitingCount } from "../hooks/useWaitingCount";
 // ゲームの進行状態
 type Phase = "ready" | "playing" | "result";
 
-export default function TapGame({ onFinished }: { onFinished?: () => void }) {
+export default function TapGame({ onFinished }: { onFinished?: (score: number) => void }) {
   const DURATION_SEC = 10; // ゲームの制限時間（秒）
   const waitingCount = useWaitingCount();
 
   //  値が変わると画面が再描画される
-  const [phase, setPhase] = useState<Phase>("ready"); // 現在の画面
+  const [phase, setPhase] = useState<Phase>(onFinished ? "playing" : "ready"); // 対戦モードは即スタート
   const [count, setCount] = useState(0); // タップ数
   const [remainMs, setRemainMs] = useState(DURATION_SEC * 1000);// 残り時間（ミリ秒）
 
@@ -89,9 +89,15 @@ export default function TapGame({ onFinished }: { onFinished?: () => void }) {
   // コンポーネントがアンマウントされたらタイマーを止める
   useEffect(() => stopLoop, []);
 
+  // 対戦モードはマウント時に即タイマー開始
+  useEffect(() => {
+    if (onFinished) start();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (phase === "result") {
-      onFinished?.();
+      onFinished?.(count);
     }
   }, [onFinished, phase]);
 
@@ -160,7 +166,7 @@ export default function TapGame({ onFinished }: { onFinished?: () => void }) {
           </>
         )}
 
-        {phase === "result" && (
+        {phase === "result" && !onFinished && (
           <>
             <h2 style={pageTitleStyle}>結果発表 🎉</h2>
 
