@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-=======
-import React, { useMemo, useState } from "react";
->>>>>>> origin/main
 
 type Candidate = {
   id: string;
@@ -11,34 +7,24 @@ type Candidate = {
   votes: number;
 };
 
-<<<<<<< HEAD
-=======
-// AdditionalView に渡す props
->>>>>>> origin/main
 type AdditionalViewProps = {
   onAdd: (musicName: string) => void;
   onFinish: () => void;
   canFinish: boolean;
-<<<<<<< HEAD
   onPlayAgain: () => void;
   hasAdded: boolean;
+  onHome: () => void;
 };
 
-=======
-};
-
-// RankingView に渡す props
->>>>>>> origin/main
 type RankingViewProps = {
   candidates: Candidate[];
   onVote: (id: string) => void;
   votedId: string | null;
-<<<<<<< HEAD
   onPlayAgain: () => void;
   onQuit: () => void;
   isWinner: boolean;
+  onHome: () => void;
 };
-
 
 // 共通ヘッダー
 function Header({ onHome }: { onHome: () => void }) {
@@ -65,60 +51,54 @@ function Header({ onHome }: { onHome: () => void }) {
       }}>
         Request the BGM
       </span>
-
-      {/* Homeボタン */}
       <button
-      onClick={onHome}
-      style={{
-        background: "#fff",
-        color: "#ff3344",
-        border: "2px solid #ff3344",
-        borderRadius: 8,
-        padding: "6px 14px",
-        fontSize: 13,
-        fontWeight: 800,
-        cursor: "pointer",
+        onClick={onHome}
+        style={{
+          background: "#fff",
+          color: "#ff3344",
+          border: "1.5px solid #ff3344",
+          borderRadius: 6,
+          padding: "4px 10px",
+          fontSize: 11,
+          fontWeight: 800,
+          cursor: "pointer",
         }}
-        >
-          Home
-          </button>
-          </div>
+      >
+        Home
+      </button>
+    </div>
   );
 }
 
-
 // 曲の追加画面（勝者）
-function AdditionalView({ onAdd, onFinish, canFinish, onPlayAgain, hasAdded }: AdditionalViewProps) {
-=======
-};
-
-
-// 曲の追加画面（勝者）
-function AdditionalView({ onAdd, onFinish, canFinish }: AdditionalViewProps) {
->>>>>>> origin/main
+function AdditionalView({ onAdd, onFinish, canFinish, onPlayAgain, hasAdded, onHome }: AdditionalViewProps) {
   const [input, setInput] = useState("");
 
   const handleAdd = () => {
     const name = input.trim();
-<<<<<<< HEAD
     if (!name || hasAdded) return;
-=======
-    if (!name) return;
->>>>>>> origin/main
     onAdd(name);
     setInput("");
   };
 
   return (
-<<<<<<< HEAD
     <div style={{
-      height: "100vh", overflowY: "auto", background: "#ffffff",
-      display: "flex", flexDirection: "column", alignItems: "center",
-      fontFamily: "'Helvetica Neue', Arial, sans-serif",width: "100%",boxSizing: "border-box",
+      minHeight: "100vh",
+      background: "#ffffff",
+      fontFamily: "'Helvetica Neue', Arial, sans-serif",
+      width: "100%",
     }}>
-      <Header />
-
-      <div style={{ width: "100%", padding: "16px 12px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Header onHome={onHome} />
+      <div style={{
+        width: "100%",
+        maxWidth: 480,
+        margin: "0 auto",
+        padding: "16px 16px 24px",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+      }}>
         <div>
           <p style={{ fontSize: 13, fontWeight: 700, color: "#888", textAlign: "center", letterSpacing: "0.05em", textTransform: "uppercase" }}>
             🏆 Winner
@@ -191,53 +171,33 @@ function AdditionalView({ onAdd, onFinish, canFinish }: AdditionalViewProps) {
           </button>
         </div>
       </div>
-=======
-    <div className="p-4">
-      <h1 className="text-xl font-bold mb-4">曲を追加</h1>
-
-      <input
-        className="border rounded p-2 w-full mb-2"
-        value={input}
-        onChange={(e) => setInput(e.target.value)}
-        placeholder="曲名を入力"
-      />
-
-      <button
-        className="bg-blue-500 text-white px-4 py-2 rounded"
-        onClick={handleAdd}
-      >
-        追加
-      </button>
-
-      <button
-        className={`text-white px-4 py-2 rounded mt-4 w-full ${
-          canFinish ? "bg-gray-500" : "bg-gray-300 cursor-not-allowed"
-        }`}
-        onClick={onFinish}
-        disabled={!canFinish}
-      >
-        ランキングを見る
-      </button>
->>>>>>> origin/main
     </div>
   );
 }
 
-<<<<<<< HEAD
 // ランキング＋投票画面
-function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinner }: RankingViewProps) {
+function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinner, onHome }: RankingViewProps) {
   const maxVotes = Math.max(...candidates.map((c) => c.votes), 1);
   const medals = ["🥇", "🥈", "🥉"];
 
   return (
     <div style={{
-      height: "100vh", overflowY: "auto", background: "#ffffff",
-      display: "flex", flexDirection: "column", alignItems: "center",
-      fontFamily: "'Helvetica Neue', Arial, sans-serif",width: "100%",boxSizing: "border-box",
+      minHeight: "100vh",
+      background: "#ffffff",
+      fontFamily: "'Helvetica Neue', Arial, sans-serif",
+      width: "100%",
     }}>
-      <Header />
-
-      <div style={{ width: "100%", padding: "16px 12px", display: "flex", flexDirection: "column", gap: 16 }}>
+      <Header onHome={onHome} />
+      <div style={{
+        width: "100%",
+        maxWidth: 480,
+        margin: "0 auto",
+        padding: "16px 16px 24px",
+        boxSizing: "border-box",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+      }}>
         <div>
           <p style={{ fontSize: 13, fontWeight: 700, color: "#888", textAlign: "center", letterSpacing: "0.05em", textTransform: "uppercase" }}>
             🎵 BGM Ranking
@@ -266,7 +226,7 @@ function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinne
                 <div key={c.id} style={{
                   display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
                   borderBottom: idx < candidates.length - 1 ? "1.5px solid #eee" : "none",
-                  background: isMyVote ? "#ffffff" : "transparent",
+                  background: isMyVote ? "#fff5f5" : "transparent",
                 }}>
                   <div style={{ width: 32, textAlign: "center", fontSize: idx < 3 ? 22 : 14, fontWeight: 900, color: "#111", flexShrink: 0 }}>
                     {idx < 3 ? medals[idx] : `${idx + 1}`}
@@ -311,6 +271,7 @@ function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinne
           )}
         </div>
 
+// メインコンポーネント
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <button onClick={onPlayAgain} style={{
             width: "100%", background: "#ffd500", color: "#111",
@@ -334,7 +295,6 @@ function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinne
   );
 }
 
-// メインコンポーネント
 export default function VotePage() {
   const navigate = useNavigate();
   const [phase, setPhase] = useState<"collect" | "vote">("collect");
@@ -343,72 +303,18 @@ export default function VotePage() {
   const [hasAdded, setHasAdded] = useState(false);
   const [isWinner, setIsWinner] = useState(false);
 
-=======
-
-// ランキング＋投票画面（敗者）
-function RankingView({ candidates, onVote, votedId }: RankingViewProps) {
-  return (
-    <ul className="p-4 space-y-2">
-      {candidates.map((c, idx) => (
-        <li key={c.id} className="flex items-center gap-3 border-b pb-2">
-          <div className="w-10 font-bold">{idx + 1}位</div>
-
-          <div className="flex-1">
-            <div className="font-semibold">{c.musicName}</div>
-            <div className="text-sm opacity-70">{c.votes}票</div>
-          </div>
-
-          <button
-            className={`px-3 py-1 rounded ${
-              votedId !== null ? "bg-gray-300" : "bg-green-500 text-white"
-            }`}
-            onClick={() => onVote(c.id)}
-            disabled={votedId !== null}
-          >
-            {votedId === c.id ? "✓ 投票済" : "投票"}
-          </button>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-
-// メインコンポーネント
-export default function VotePage() {
-  const [phase, setPhase] = useState<"collect" | "vote">("collect");
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-  const [votedId, setVotedId] = useState<string | null>(null);
-
-  // 得票数の降順でソートしたリスト（candidatesが変わった時だけ再計算）
-  // ※ Firestoreに繋いだ後はこのソートは不要になる予定
->>>>>>> origin/main
   const sortedCandidates = useMemo(() => {
     return [...candidates].sort((a, b) => b.votes - a.votes);
   }, [candidates]);
 
-<<<<<<< HEAD
   const handleAdd = (musicName: string) => {
     setCandidates((prev) => [
       ...prev,
-      { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,musicName,votes: 0  },
+      { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, musicName, votes: 0 },
     ]);
     setHasAdded(true);
   };
 
-=======
-  // 曲を追加する（AdditionalViewから呼ばれる）
-  // ※ Firestore連携後は addDoc() に差し替える
-  const handleAdd = (musicName: string) => {
-    setCandidates((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), musicName, votes: 0 },
-    ]);
-  };
-
-  // 投票する（RankingViewから呼ばれる）
-  // ※ Firestore連携後は setDoc() に差し替える
->>>>>>> origin/main
   const handleVote = (id: string) => {
     if (votedId !== null) return;
     setVotedId(id);
@@ -417,29 +323,24 @@ export default function VotePage() {
     );
   };
 
-<<<<<<< HEAD
   const handleFinish = () => {
     setIsWinner(true);
     setPhase("vote");
   };
 
+  const handleHome = () => navigate("/");
   const handlePlayAgain = () => navigate("/game");
   const handleQuit = () => navigate("/");
 
-=======
->>>>>>> origin/main
   if (phase === "collect") {
     return (
       <AdditionalView
         onAdd={handleAdd}
         canFinish={candidates.length > 0}
-<<<<<<< HEAD
         onFinish={handleFinish}
         onPlayAgain={handlePlayAgain}
         hasAdded={hasAdded}
-=======
-        onFinish={() => setPhase("vote")}
->>>>>>> origin/main
+        onHome={handleHome}
       />
     );
   }
@@ -449,12 +350,10 @@ export default function VotePage() {
       candidates={sortedCandidates}
       onVote={handleVote}
       votedId={votedId}
-<<<<<<< HEAD
       onPlayAgain={handlePlayAgain}
       onQuit={handleQuit}
       isWinner={isWinner}
-=======
->>>>>>> origin/main
+      onHome={handleHome}
     />
   );
 }
