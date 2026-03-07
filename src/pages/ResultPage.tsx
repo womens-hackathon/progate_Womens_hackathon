@@ -1,16 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { doc, onSnapshot } from "firebase/firestore";
+import { collection, doc, getDocs, onSnapshot } from "firebase/firestore";
 import { db, ensureAuth } from "../firebase";
 import { APP_ID, STORAGE_KEYS } from "../appConfig";
 
 type ResultState = "loading" | "waiting" | "win" | "lose" | "error";
+
+interface ScoreEntry { uid: string; score: number; nickname?: string }
 
 export default function ResultPage() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [state, setState] = useState<ResultState>("loading");
   const [errorText, setErrorText] = useState("");
+  const [scores, setScores] = useState<ScoreEntry[]>([]);
+  const [myUid, setMyUid] = useState<string>("");
 
   const matchId = useMemo(
     () => params.get("matchId") ?? localStorage.getItem(STORAGE_KEYS.matchId) ?? "",
@@ -25,24 +29,43 @@ export default function ResultPage() {
     }
 
     const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+    const matchPath = `apps/${APP_ID}/general/${tenpoId}/matches/${matchId}`;
     let unsub = () => {};
 
     (async () => {
       try {
         const user = await ensureAuth();
-        const matchRef = doc(db, `apps/${APP_ID}/general/${tenpoId}/matches/${matchId}`);
-        unsub = onSnapshot(matchRef, (snap) => {
+        setMyUid(user.uid);
+        const matchRef = doc(db, matchPath);
+        unsub = onSnapshot(matchRef, async (snap) => {
           if (!snap.exists()) {
             setState("error");
             setErrorText("マッチが見つかりません");
             return;
           }
-          const data = snap.data() as { status?: string; winnerUserId?: string | null };
+          const data = snap.data() as {
+            status?: string;
+            winnerUserId?: string | null;
+            members?: Record<string, { nickname?: string }>;
+          };
           if (data.status !== "ended" || !data.winnerUserId) {
             setState("waiting");
             return;
           }
           setState(data.winnerUserId === user.uid ? "win" : "lose");
+
+          // スコアを取得
+          try {
+            const scoresSnap = await getDocs(collection(db, `${matchPath}/scores`));
+            const entries: ScoreEntry[] = scoresSnap.docs.map((d) => {
+              const s = d.data() as { uid: string; score: number };
+              const nickname = data.members?.[s.uid]?.nickname;
+              return { uid: s.uid, score: s.score, nickname };
+            });
+            setScores(entries);
+          } catch {
+            // スコア取得失敗は無視
+          }
         });
       } catch (error) {
         console.error(error);
@@ -70,8 +93,22 @@ export default function ResultPage() {
         )}
         {state === "error" && <p style={descStyle}>{errorText}</p>}
 
+        {scores.length > 0 && (
+          <div style={scoresContainerStyle}>
+            {scores.map((entry) => (
+              <div key={entry.uid} style={scoreRowStyle}>
+                <span style={scoreNicknameStyle}>
+                  {entry.uid === myUid ? "あなた" : (entry.nickname ?? "相手")}
+                </span>
+                <span style={scoreValueStyle}>{entry.score}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
         <button
-          onClick={() => navigate("/vote")}
+          // onClick={() => navigate("/vote")}
+          onClick={() => navigate(state === "lose" ? "/vote?mode=vote" : "/vote")}
           style={primaryButtonStyle}
         >
           次へ進む
@@ -122,6 +159,32 @@ const descStyle: React.CSSProperties = {
   fontSize: 14,
   color: "#e2e8f0",
   margin: 0,
+};
+
+const scoresContainerStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  border: "1px solid rgba(255,255,255,0.2)",
+  borderRadius: 12,
+  padding: "12px 16px",
+};
+
+const scoreRowStyle: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+
+const scoreNicknameStyle: React.CSSProperties = {
+  fontSize: 14,
+  color: "#e2e8f0",
+};
+
+const scoreValueStyle: React.CSSProperties = {
+  fontSize: 20,
+  fontWeight: 900,
+  color: "#38bdf8",
 };
 
 const primaryButtonStyle: React.CSSProperties = {
