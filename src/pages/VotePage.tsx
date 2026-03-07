@@ -90,9 +90,9 @@ function AdditionalView({
   const [results, setResults] = useState<ITunesTrack[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
-
+  const [selectedArtwork, setSelectedArtwork] = useState("");
   const handleSearch = async (keyword: string) => {
-    const q = keyword.trim();
+  const q = keyword.trim();
 
     if (!q || hasAdded) {
       setResults([]);
@@ -144,13 +144,16 @@ function AdditionalView({
     return () => clearTimeout(timer);
   }, [input, hasAdded]);
 
-  const handleSelect = (track: ITunesTrack) => {
-    if (hasAdded) return;
-    onAdd(`${track.trackName} / ${track.artistName}`);
-    setInput("");
-    setResults([]);
-    setSearched(false);
-  };
+const handleSelect = (track: ITunesTrack) => {
+  if (hasAdded) return;
+
+  const selectedMusic = `${track.trackName} / ${track.artistName}`;
+  onAdd(selectedMusic);
+  setInput(selectedMusic);
+  setSelectedArtwork(track.artworkUrl100?.replace("100x100bb", "600x600bb") || "");
+  setResults([]);
+  setSearched(false);
+};
 
   return (
     <div
@@ -209,18 +212,40 @@ function AdditionalView({
             boxShadow: "4px 4px 0px #111",
           }}
         >
-          <p
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: "#888",
-              marginBottom: 8,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-            }}
-          >
-            曲名 / アーティスト名
-          </p>
+          {hasAdded && selectedArtwork && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      marginBottom: 16,
+    }}
+  >
+    <img
+      src={selectedArtwork}
+      alt="selected artwork"
+      style={{
+        width: 210,
+        height: 210,
+        objectFit: "cover",
+        bborder: "1px solid #eee",
+        background: "#f1f1f1",
+      }}
+    />
+  </div>
+)}
+
+<p
+  style={{
+    fontSize: 13,
+    fontWeight: 700,
+    color: "#888",
+    marginBottom: 8,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  }}
+>
+  曲名 / アーティスト名
+</p>
 
           <input
             style={{
