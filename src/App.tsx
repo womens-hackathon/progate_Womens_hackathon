@@ -1,15 +1,17 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 import VotePage from "./pages/VotePage";
-import GamePage from "./pages/TapGame";
+import TapGame from "./pages/TapGame";
+import HitAndBlow from "./pages/HitAndBlow";
+import RayStack from "./pages/RayStack";
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<VotePage />} />
-        <Route path="/tap" element={<GamePage />} />
-      </Routes>
-    </BrowserRouter>
+    <Routes>
+      <Route path="/" element={<VotePage />} />
+      <Route path="/tap" element={<TapGame />} />
+      <Route path="/hb" element={<HitAndBlow />} />
+      <Route path="/ray" element={<RayStack />} />
+    </Routes>
   );
 }
 

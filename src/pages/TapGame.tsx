@@ -109,7 +109,7 @@ export default function TapGame() {
             </div>
 
             <button onClick={start} style={primaryButtonStyle}>
-              🎮 スタート
+               スタート
             </button>
           </>
         )}
