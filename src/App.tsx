@@ -1,10 +1,16 @@
-import { Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import VotePage from "./pages/VotePage";
 import GamePage from "./pages/TapGame";
 
-export default function App() {
+function App() {
   return (
-    <Routes>
-      <Route path="/tap" element={<GamePage />} />
-    </Routes>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<VotePage />} />
+        <Route path="/tap" element={<GamePage />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
+
+export default App;
