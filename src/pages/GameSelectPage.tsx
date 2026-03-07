@@ -75,6 +75,14 @@ export default function GameSelectPage() {
           </button>
         ))}
       </div>
+
+      <button
+        onClick={() => navigate("/quiz")}
+        style={{ ...cardStyle, borderColor: "#fb923c" }}
+      >
+        <span style={{ ...tagStyle, background: "#fb923c" }}>おすすめメニュー診断</span>
+        <span style={descStyle}>好みに合ったサイゼリヤメニューを診断</span>
+      </button>
     </div>
   );
 }

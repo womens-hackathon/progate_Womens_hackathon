@@ -9,6 +9,7 @@ import RankingPage from "./pages/RankingPage";
 import TapGame from "./pages/TapGame";
 import HitAndBlow from "./pages/HitAndBlow";
 import RayStack from "./pages/RayStack";
+import FoodQuiz from "./pages/FoodQuiz";
 
 function App() {
   return (
@@ -24,6 +25,8 @@ function App() {
       <Route path="/tap" element={<TapGame />} />
       <Route path="/hb" element={<HitAndBlow />} />
       <Route path="/ray" element={<RayStack />} />
+      <Route path="/room/:id" element={<LoginPage />} />
+      <Route path="/quiz" element={<FoodQuiz />} />
     </Routes>
   );
 }
