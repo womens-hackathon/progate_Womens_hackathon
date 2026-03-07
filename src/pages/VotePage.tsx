@@ -5,10 +5,11 @@ type Candidate = {
   id: string;
   musicName: string;
   votes: number;
+  previewUrl?: string;
 };
 
 type AdditionalViewProps = {
-  onAdd: (musicName: string) => void;
+  onAdd: (track: ITunesTrack) => void;
   onFinish: () => void;
   canFinish: boolean;
   onPlayAgain: () => void;
@@ -24,6 +25,8 @@ type RankingViewProps = {
   onQuit: () => void;
   isWinner: boolean;
   onHome: () => void;
+  playingId: string | null;
+  onTogglePreview: (candidate: Candidate) => void;
 };
 
 type ITunesTrack = {
@@ -31,6 +34,7 @@ type ITunesTrack = {
   trackName: string;
   artistName: string;
   artworkUrl100?: string;
+  previewUrl?: string;
 };
 
 // 共通ヘッダー
@@ -86,13 +90,16 @@ function AdditionalView({
   hasAdded,
   onHome,
 }: AdditionalViewProps) {
+
   const [input, setInput] = useState("");
   const [results, setResults] = useState<ITunesTrack[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [selectedArtwork, setSelectedArtwork] = useState("");
+
   const handleSearch = async (keyword: string) => {
-  const q = keyword.trim();
+
+    const q = keyword.trim();
 
     if (!q || hasAdded) {
       setResults([]);
@@ -106,9 +113,7 @@ function AdditionalView({
       setSearched(true);
 
       const res = await fetch(
-        `https://itunes.apple.com/search?term=${encodeURIComponent(
-          q
-        )}&entity=song&country=JP&limit=10`
+        `https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&country=JP&limit=10`
       );
 
       if (!res.ok) {
@@ -117,15 +122,21 @@ function AdditionalView({
 
       const data = await res.json();
       setResults(Array.isArray(data.results) ? data.results : []);
+
     } catch (error) {
+
       console.error(error);
       setResults([]);
+
     } finally {
+
       setLoading(false);
+
     }
   };
 
   useEffect(() => {
+
     if (hasAdded) return;
 
     const trimmed = input.trim();
@@ -142,18 +153,27 @@ function AdditionalView({
     }, 350);
 
     return () => clearTimeout(timer);
+
   }, [input, hasAdded]);
 
-const handleSelect = (track: ITunesTrack) => {
-  if (hasAdded) return;
+  const handleSelect = (track: ITunesTrack) => {
 
-  const selectedMusic = `${track.trackName} / ${track.artistName}`;
-  onAdd(selectedMusic);
-  setInput(selectedMusic);
-  setSelectedArtwork(track.artworkUrl100?.replace("100x100bb", "600x600bb") || "");
-  setResults([]);
-  setSearched(false);
-};
+    if (hasAdded) return;
+
+    onAdd(track);
+
+    const selectedMusic = `${track.trackName} / ${track.artistName}`;
+
+    setInput(selectedMusic);
+
+    setSelectedArtwork(
+      track.artworkUrl100?.replace("100x100bb", "600x600bb") || ""
+    );
+
+    setResults([]);
+    setSearched(false);
+
+  };
 
   return (
     <div
@@ -165,6 +185,7 @@ const handleSelect = (track: ITunesTrack) => {
       }}
     >
       <Header onHome={onHome} />
+
       <div
         style={{
           width: "100%",
@@ -190,6 +211,7 @@ const handleSelect = (track: ITunesTrack) => {
           >
             🏆 Winner
           </p>
+
           <h1
             style={{
               fontSize: 26,
@@ -212,40 +234,41 @@ const handleSelect = (track: ITunesTrack) => {
             boxShadow: "4px 4px 0px #111",
           }}
         >
-          {hasAdded && selectedArtwork && (
-  <div
-    style={{
-      display: "flex",
-      justifyContent: "center",
-      marginBottom: 16,
-    }}
-  >
-    <img
-      src={selectedArtwork}
-      alt="selected artwork"
-      style={{
-        width: 210,
-        height: 210,
-        objectFit: "cover",
-        bborder: "1px solid #eee",
-        background: "#f1f1f1",
-      }}
-    />
-  </div>
-)}
 
-<p
-  style={{
-    fontSize: 13,
-    fontWeight: 700,
-    color: "#888",
-    marginBottom: 8,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-  }}
->
-  曲名 / アーティスト名
-</p>
+          {hasAdded && selectedArtwork && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                marginBottom: 16,
+              }}
+            >
+              <img
+                src={selectedArtwork}
+                alt="selected artwork"
+                style={{
+                  width: 210,
+                  height: 210,
+                  objectFit: "cover",
+                  border: "1px solid #eee",
+                  background: "#f1f1f1",
+                }}
+              />
+            </div>
+          )}
+
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#888",
+              marginBottom: 8,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
+            曲名 / アーティスト名
+          </p>
 
           <input
             style={{
@@ -340,12 +363,7 @@ const handleSelect = (track: ITunesTrack) => {
                     }}
                   />
 
-                  <div
-                    style={{
-                      flex: 1,
-                      minWidth: 0,
-                    }}
-                  >
+                  <div style={{ flex: 1, minWidth: 0 }}>
                     <div
                       style={{
                         fontSize: 15,
@@ -358,6 +376,7 @@ const handleSelect = (track: ITunesTrack) => {
                     >
                       {track.trackName}
                     </div>
+
                     <div
                       style={{
                         fontSize: 13,
@@ -410,6 +429,7 @@ const handleSelect = (track: ITunesTrack) => {
           >
             🏆 ランキングを見る
           </button>
+
           <button
             onClick={onPlayAgain}
             style={{
@@ -434,7 +454,18 @@ const handleSelect = (track: ITunesTrack) => {
 }
 
 // ランキング＋投票画面
-function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinner, onHome }: RankingViewProps) {
+function RankingView({
+  candidates,
+  onVote,
+  votedId,
+  onPlayAgain,
+  onQuit,
+  isWinner,
+  onHome,
+  playingId,
+  onTogglePreview,
+}: RankingViewProps) {
+
   const maxVotes = Math.max(...candidates.map((c) => c.votes), 1);
   const medals = ["🥇", "🥈", "🥉"];
 
@@ -445,7 +476,9 @@ function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinne
       fontFamily: "'Helvetica Neue', Arial, sans-serif",
       width: "100%",
     }}>
+
       <Header onHome={onHome} />
+
       <div style={{
         width: "100%",
         maxWidth: 480,
@@ -456,129 +489,317 @@ function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinne
         flexDirection: "column",
         gap: 16,
       }}>
+
         <div>
           <p style={{ fontSize: 13, fontWeight: 700, color: "#888", textAlign: "center", letterSpacing: "0.05em", textTransform: "uppercase" }}>
             🎵 BGM Ranking
           </p>
+
           <h1 style={{ fontSize: 26, fontWeight: 900, textAlign: "center", color: "#111", marginTop: 4 }}>
             {isWinner ? "ランキング" : votedId ? "投票済み！" : "投票しよう"}
           </h1>
+
           <p style={{ fontSize: 13, color: "#888", textAlign: "center", marginTop: 4 }}>
             {isWinner ? "現在のランキングです" : votedId ? "結果をリアルタイムで確認できます" : "気に入った曲に1票投票してください"}
           </p>
         </div>
 
         <div style={{
-          background: "#fff", border: "2.5px solid #111", borderRadius: 20,
-          padding: "8px 0", boxShadow: "4px 4px 0px #111",
+          background: "#fff",
+          border: "2.5px solid #111",
+          borderRadius: 20,
+          padding: "8px 0",
+          boxShadow: "4px 4px 0px #111",
         }}>
+
           {candidates.length === 0 ? (
             <p style={{ textAlign: "center", color: "#888", padding: "32px 0", fontSize: 14 }}>
               まだ候補曲がありません
             </p>
           ) : (
             candidates.map((c, idx) => {
+
               const pct = Math.round((c.votes / maxVotes) * 100);
               const isMyVote = votedId === c.id;
+
               return (
                 <div key={c.id} style={{
-                  display: "flex", alignItems: "center", gap: 12, padding: "12px 16px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "12px 16px",
                   borderBottom: idx < candidates.length - 1 ? "1.5px solid #eee" : "none",
                   background: isMyVote ? "#fff5f5" : "transparent",
                 }}>
-                  <div style={{ width: 32, textAlign: "center", fontSize: idx < 3 ? 22 : 14, fontWeight: 900, color: "#111", flexShrink: 0 }}>
+
+                  <div style={{
+                    width: 32,
+                    textAlign: "center",
+                    fontSize: idx < 3 ? 22 : 14,
+                    fontWeight: 900,
+                    color: "#111",
+                    flexShrink: 0
+                  }}>
                     {idx < 3 ? medals[idx] : `${idx + 1}`}
                   </div>
+
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "#111", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div style={{
+                      fontSize: 15,
+                      fontWeight: 700,
+                      color: "#111",
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis"
+                    }}>
                       {c.musicName}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                      <div style={{ flex: 1, height: 6, background: "#eee", borderRadius: 99, overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, height: "100%", background: isMyVote ? "#ff3344" : "#111", borderRadius: 99, transition: "width 0.5s" }} />
+
+                    <div style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      marginTop: 4
+                    }}>
+
+                      <div style={{
+                        flex: 1,
+                        height: 6,
+                        background: "#eee",
+                        borderRadius: 99,
+                        overflow: "hidden"
+                      }}>
+                        <div style={{
+                          width: `${pct}%`,
+                          height: "100%",
+                          background: isMyVote ? "#ff3344" : "#111",
+                          borderRadius: 99,
+                          transition: "width 0.5s"
+                        }} />
                       </div>
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "#888", flexShrink: 0 }}>{c.votes}票</span>
+
+                      <span style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#888",
+                        flexShrink: 0
+                      }}>
+                        {c.votes}票
+                      </span>
+
                     </div>
                   </div>
-                  {!isWinner && (
-                    isMyVote ? (
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "#ff3344", border: "2px solid #ff3344", borderRadius: 50, padding: "6px 12px", flexShrink: 0 }}>
-                        ✓ 投票済
-                      </div>
-                    ) : (
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+
+                    {c.previewUrl && (
                       <button
-                        onClick={() => onVote(c.id)}
-                        disabled={votedId !== null}
-                        style={{
-                          background: votedId !== null ? "#eee" : "#ff3344",
-                          color: votedId !== null ? "#aaa" : "#fff",
-                          border: "2px solid #111", borderRadius: 50,
-                          padding: "6px 14px", fontSize: 13, fontWeight: 800,
-                          cursor: votedId !== null ? "not-allowed" : "pointer",
-                          flexShrink: 0,
-                          boxShadow: votedId !== null ? "none" : "2px 2px 0px #111",
-                        }}
-                      >
-                        投票
-                      </button>
-                    )
-                  )}
+  onClick={() => onTogglePreview(c)}
+  style={{
+    width: 28,
+    height: 28,
+    borderRadius: "50%",
+    border: "2px solid #111",
+    background: "#fff",
+    cursor: "pointer",
+    boxShadow: "2px 2px 0px #111",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 0,
+  }}
+>
+  {playingId === c.id ? (
+    <svg width="19" height="19" viewBox="0 0 24 24">
+      <rect x="6" y="5" width="4" height="14" rx="1.5" fill="#111" />
+      <rect x="14" y="5" width="4" height="14" rx="1.5" fill="#111" />
+    </svg>
+  ) : (
+    <svg width="19" height="19" viewBox="0 0 24 24">
+      <path d="M8 5.5C8 4.7 8.9 4.2 9.6 4.6L19 10.3C19.7 10.7 19.7 11.7 19 12.1L9.6 17.8C8.9 18.2 8 17.7 8 16.9V5.5Z" fill="#111"/>
+    </svg>
+  )}
+</button>
+                    )}
+
+                    {!isWinner && (
+                      isMyVote ? (
+                        <div style={{
+                          fontSize: 13,
+                          fontWeight: 800,
+                          color: "#ff3344",
+                          border: "2px solid #ff3344",
+                          borderRadius: 50,
+                          padding: "6px 12px",
+                          flexShrink: 0
+                        }}>
+                          ✓ 投票済
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => onVote(c.id)}
+                          disabled={votedId !== null}
+                          style={{
+                            background: votedId !== null ? "#eee" : "#ff3344",
+                            color: votedId !== null ? "#aaa" : "#fff",
+                            border: "2px solid #111",
+                            borderRadius: 50,
+                            padding: "6px 14px",
+                            fontSize: 13,
+                            fontWeight: 800,
+                            cursor: votedId !== null ? "not-allowed" : "pointer",
+                            flexShrink: 0,
+                            boxShadow: votedId !== null ? "none" : "2px 2px 0px #111",
+                          }}
+                        >
+                          投票
+                        </button>
+                      )
+                    )}
+
+                  </div>
+
                 </div>
               );
+
             })
           )}
+
         </div>
 
-{/* メインコンポーネント */}
+        {/* メインコンポーネント */}
+
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <button onClick={onPlayAgain} style={{
-            width: "100%", background: "#ffd500", color: "#111",
-            border: "2.5px solid #111", borderRadius: 50,
-            padding: "16px 0", fontSize: 16, fontWeight: 800,
-            cursor: "pointer", boxShadow: "3px 3px 0px #111",
-          }}>
+
+          <button
+            onClick={onPlayAgain}
+            style={{
+              width: "100%",
+              background: "#ffd500",
+              color: "#111",
+              border: "2.5px solid #111",
+              borderRadius: 50,
+              padding: "16px 0",
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: "pointer",
+              boxShadow: "3px 3px 0px #111",
+            }}
+          >
             🎮 もう一度ゲームをする
           </button>
-          <button onClick={onQuit} style={{
-            width: "100%", background: "#fff", color: "#111",
-            border: "2.5px solid #111", borderRadius: 50,
-            padding: "16px 0", fontSize: 16, fontWeight: 800,
-            cursor: "pointer", boxShadow: "3px 3px 0px #111",
-          }}>
-            やめる
+
+          <button
+            onClick={onQuit}
+            style={{
+              width: "100%",
+              background: "#fff",
+              color: "#111",
+              border: "2.5px solid #111",
+              borderRadius: 50,
+              padding: "16px 0",
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: "pointer",
+              boxShadow: "3px 3px 0px #111",
+            }}
+          >
+            シェアする
           </button>
+
         </div>
+
       </div>
     </div>
   );
 }
 
 export default function VotePage() {
+
   const navigate = useNavigate();
+
   const [phase, setPhase] = useState<"collect" | "vote">("collect");
+
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+
   const [votedId, setVotedId] = useState<string | null>(null);
+
   const [hasAdded, setHasAdded] = useState(false);
+
   const [isWinner, setIsWinner] = useState(false);
+
+  const [playingId, setPlayingId] = useState<string | null>(null);
+
+  const [audio] = useState(() => new Audio());
+
+  useEffect(() => {
+    return () => {
+      audio.pause();
+    };
+  }, [audio]);
 
   const sortedCandidates = useMemo(() => {
     return [...candidates].sort((a, b) => b.votes - a.votes);
   }, [candidates]);
 
-  const handleAdd = (musicName: string) => {
+  const handleAdd = (track: ITunesTrack) => {
+
+    const musicName = `${track.trackName} / ${track.artistName}`;
+
     setCandidates((prev) => [
       ...prev,
-      { id: `${Date.now()}-${Math.random().toString(36).slice(2)}`, musicName, votes: 0 },
+      {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        musicName,
+        votes: 0,
+        previewUrl: track.previewUrl || ""
+      }
     ]);
+
     setHasAdded(true);
+
   };
 
   const handleVote = (id: string) => {
+
     if (votedId !== null) return;
+
     setVotedId(id);
+
     setCandidates((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, votes: c.votes + 1 } : c))
+      prev.map((c) =>
+        c.id === id
+          ? { ...c, votes: c.votes + 1 }
+          : c
+      )
     );
+
+  };
+
+  const handleTogglePreview = (candidate: Candidate) => {
+
+    if (!candidate.previewUrl) return;
+
+    if (playingId === candidate.id) {
+
+      audio.pause();
+      audio.currentTime = 0;
+      setPlayingId(null);
+      return;
+
+    }
+
+    audio.pause();
+    audio.src = candidate.previewUrl;
+    audio.currentTime = 0;
+    audio.play();
+
+    setPlayingId(candidate.id);
+
+    audio.onended = () => {
+      setPlayingId(null);
+    };
+
   };
 
   const handleFinish = () => {
@@ -591,6 +812,7 @@ export default function VotePage() {
   const handleQuit = () => navigate("/");
 
   if (phase === "collect") {
+
     return (
       <AdditionalView
         onAdd={handleAdd}
@@ -601,6 +823,7 @@ export default function VotePage() {
         onHome={handleHome}
       />
     );
+
   }
 
   return (
@@ -612,6 +835,8 @@ export default function VotePage() {
       onQuit={handleQuit}
       isWinner={isWinner}
       onHome={handleHome}
+      playingId={playingId}
+      onTogglePreview={handleTogglePreview}
     />
   );
 }
