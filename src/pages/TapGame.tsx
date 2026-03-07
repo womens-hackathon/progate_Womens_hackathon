@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // ゲームの進行状態
 type Phase = "ready" | "playing" | "result";
 
-export default function TapGame() {
+export default function TapGame({ onFinished }: { onFinished?: () => void }) {
   const DURATION_SEC = 10; // ゲームの制限時間（秒）
 
   //  値が変わると画面が再描画される
@@ -86,6 +86,12 @@ export default function TapGame() {
 
   // コンポーネントがアンマウントされたらタイマーを止める
   useEffect(() => stopLoop, []);
+
+  useEffect(() => {
+    if (phase === "result") {
+      onFinished?.();
+    }
+  }, [onFinished, phase]);
 
   return (
     <div style={containerStyle}>

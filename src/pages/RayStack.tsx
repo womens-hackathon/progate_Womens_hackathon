@@ -38,7 +38,7 @@ function drawRayAt(
   ctx.drawImage(img, x, y, w, DRAW_H);
 }
 
-export default function RayStack() {
+export default function RayStack({ onFinished }: { onFinished?: () => void }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);
@@ -240,6 +240,12 @@ export default function RayStack() {
     rafRef.current = requestAnimationFrame(gameLoop);
     return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
   }, [phase]);
+
+  useEffect(() => {
+    if (phase === "gameover") {
+      onFinished?.();
+    }
+  }, [onFinished, phase]);
 
   // 崩れアニメーション用に物理レイヤーをセット→"collapsing"へ
   const triggerCollapse = (s: typeof gs.current) => {
