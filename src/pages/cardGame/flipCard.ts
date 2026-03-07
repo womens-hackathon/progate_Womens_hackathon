@@ -9,6 +9,7 @@ import type { CardGameMatch, MemoryCard } from "./types";
 type FlipCardParams = {
   db: Firestore;
   appId: string;
+  tenpoId: string;
   matchId: string;
   myId: string;
   card: MemoryCard;
@@ -17,11 +18,15 @@ type FlipCardParams = {
 export async function flipCard({
   db,
   appId,
+  tenpoId,
   matchId,
   myId,
   card,
 }: FlipCardParams) {
-  const matchRef = doc(db, `apps/${appId}/general/matches/${matchId}`);
+  const matchRef = doc(
+    db,
+    `apps/${appId}/general/${tenpoId}/matches/${matchId}`
+  );
 
   const result = await runTransaction(db, async (tx) => {
     const snap = await tx.get(matchRef);

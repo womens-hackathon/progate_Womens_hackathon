@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { STORAGE_KEYS } from "../appConfig";
 
 type Candidate = {
   id: string;
@@ -328,9 +329,13 @@ export default function VotePage() {
     setPhase("vote");
   };
 
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.voteCandidates, JSON.stringify(candidates));
+  }, [candidates]);
+
   const handleHome = () => navigate("/");
-  const handlePlayAgain = () => navigate("/game");
-  const handleQuit = () => navigate("/");
+  const handlePlayAgain = () => navigate("/games");
+  const handleQuit = () => navigate("/ranking");
 
   if (phase === "collect") {
     return (

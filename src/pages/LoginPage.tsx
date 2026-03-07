@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../firebase/database';
 import { auth } from '../firebase/auth';
 import { signInAnonymously } from 'firebase/auth';
+import { STORAGE_KEYS } from '../appConfig';
 import { 
   doc, 
   setDoc, 
@@ -16,6 +17,7 @@ import {
 } from 'firebase/firestore';
 
 export default function Room() {
+  const navigate = useNavigate();
   const { id: tenpoId } = useParams();
   const [userName, setUserName] = useState('');
   const [isRegistered, setIsRegistered] = useState(false);
@@ -24,6 +26,12 @@ export default function Room() {
 
   const APP_ID = 'first_app';
   const today = new Date().toISOString().split('T')[0];
+
+  useEffect(() => {
+    if (localStorage.getItem(STORAGE_KEYS.nickname)) {
+      navigate('/games');
+    }
+  }, [navigate]);
 
   // 1. 匿名ログイン & 登録処理
   const handleRegister = async () => {
@@ -36,7 +44,7 @@ export default function Room() {
 
       // B. 今日の通し番号（order）を決定する
       const qCount = query(
-        collection(db, 'apps', APP_ID, 'tenpos', tenpoId, 'queue'),
+        collection(db, 'apps', APP_ID, 'general', tenpoId, 'queue'),
         where('date', '==', today)
       );
       const snapshot = await getCountFromServer(qCount);
@@ -50,7 +58,7 @@ export default function Room() {
       });
 
       // D. 店舗のqueueサブコレクションに予約情報を登録
-      const queueRef = doc(db, 'apps', APP_ID, 'tenpos', tenpoId, 'queue', uid);
+      const queueRef = doc(db, 'apps', APP_ID, 'general', tenpoId, 'queue', uid);
       await setDoc(queueRef, {
         uid: uid,
         nickname: userName,
@@ -60,6 +68,8 @@ export default function Room() {
         order: newOrder
       });
 
+      localStorage.setItem(STORAGE_KEYS.nickname, userName);
+      localStorage.setItem(STORAGE_KEYS.tenpoId, tenpoId);
       setMyOrder(newOrder);
       setIsRegistered(true);
     } catch (e) {
@@ -74,7 +84,7 @@ export default function Room() {
     const uid = auth.currentUser.uid;
 
     // 自分の予約情報を監視（店側でstatusが変わったのを検知するため）
-    const myDocRef = doc(db, 'apps', APP_ID, 'tenpos', tenpoId, 'queue', uid);
+    const myDocRef = doc(db, 'apps', APP_ID, 'general', tenpoId, 'queue', uid);
     const unsubMyDoc = onSnapshot(myDocRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -89,7 +99,7 @@ export default function Room() {
 
     // 自分より前に並んでいる人数（待ち人数）をリアルタイムカウント
     const q = query(
-      collection(db, 'apps', APP_ID, 'tenpos', tenpoId, 'queue'),
+      collection(db, 'apps', APP_ID, 'general', tenpoId, 'queue'),
       where('date', '==', today),
       where('status', '==', 'waiting'),
       orderBy('enteredAt', 'asc')
@@ -172,6 +182,13 @@ export default function Room() {
             <div className="w-2 h-2 bg-[#ff3344] rounded-full animate-bounce [animation-delay:-0.3s]"></div>
           </div>
         </div>
+
+        <button
+          onClick={() => navigate('/games')}
+          className="w-full bg-[#111] text-white font-black py-4 text-lg border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
+        >
+          待ち時間にゲームをプレイ
+        </button>
       </div>
     </div>
   );

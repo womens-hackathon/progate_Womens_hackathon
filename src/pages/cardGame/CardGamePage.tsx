@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { doc, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import { auth, db, ensureAuth } from "../../firebase";
+import { STORAGE_KEYS } from "../../appConfig";
 import { flipCard } from "./flipCard";
-import type { CardGameMatch, MemoryCard } from "./types";
+import type { BoardPhase, CardGameMatch, MemoryCard } from "./types";
 
 type CardGamePageProps = {
   appId: string;
@@ -101,7 +102,12 @@ export default function CardGamePage({
         const user = await ensureAuth();
         setUid(user.uid);
 
-        const matchRef = doc(db, `apps/${appId}/general/matches/${matchId}`);
+        const tenpoId =
+          localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+        const matchRef = doc(
+          db,
+          `apps/${appId}/general/${tenpoId}/matches/${matchId}`
+        );
         unsubscribe = onSnapshot(
           matchRef,
           (snap) => {
@@ -110,7 +116,30 @@ export default function CardGamePage({
               setLoading(false);
               return;
             }
-            setMatch(snap.data() as CardGameMatch);
+            const data = snap.data() as CardGameMatch;
+            if (data.memberIds.length === 0 && user.uid) {
+              void runTransaction(db, async (tx) => {
+                const refSnap = await tx.get(matchRef);
+                if (!refSnap.exists()) return;
+                const current = refSnap.data() as CardGameMatch;
+                if (current.memberIds.length > 0) return;
+                tx.update(matchRef, {
+                  memberIds: [user.uid],
+                  memberCount: 1,
+                  members: {
+                    ...(current.members ?? {}),
+                    [user.uid]: {
+                      joinedAt: serverTimestamp(),
+                      name: current.members?.[user.uid]?.name ?? "あなた",
+                      color: current.members?.[user.uid]?.color ?? "#22d3ee",
+                      score: current.members?.[user.uid]?.score ?? 0,
+                    },
+                  },
+                  updatedAt: serverTimestamp(),
+                });
+              });
+            }
+            setMatch(data);
             setLoading(false);
           },
           (error) => {
@@ -129,8 +158,35 @@ export default function CardGamePage({
     return () => unsubscribe();
   }, [appId, matchId]);
 
+  useEffect(() => {
+    if (demo) return;
+    if (!match || !match.board || !uid) return;
+    if (match.memberIds.length !== 1) return;
+    if (match.board.turnUserId === uid) return;
+
+    const tenpoId =
+      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+    const matchRef = doc(
+      db,
+      `apps/${appId}/general/${tenpoId}/matches/${matchId}`
+    );
+
+    void runTransaction(db, async (tx) => {
+      const snap = await tx.get(matchRef);
+      if (!snap.exists()) return;
+      const current = snap.data() as CardGameMatch;
+      if (current.memberIds.length !== 1) return;
+      if (current.board.turnUserId === uid) return;
+      tx.update(matchRef, {
+        "board.turnUserId": uid,
+        "board.phase": "idle",
+        updatedAt: serverTimestamp(),
+      });
+    });
+  }, [appId, demo, match, matchId, uid]);
+
   const cards = useMemo(() => {
-    if (!match) return [];
+    if (!match?.board?.cards) return [];
     return Object.values(match.board.cards).sort((a, b) => a.order - b.order);
   }, [match]);
 
@@ -140,7 +196,7 @@ export default function CardGamePage({
   const myMember = myId && match ? match.members[myId] : null;
   const opponentMember = opponentId && match ? match.members[opponentId] : null;
 
-  const isMyTurn = !!match && match.board.turnUserId === myId;
+  const isMyTurn = !!match?.board && match.board.turnUserId === myId;
   const winnerName =
     match?.status === "ended" && match.winnerUserId
       ? match.members[match.winnerUserId]?.name ?? "勝者"
@@ -160,9 +216,12 @@ export default function CardGamePage({
 
     try {
       setErrorText("");
+      const tenpoId =
+        localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
       await flipCard({
         db,
         appId,
+        tenpoId,
         matchId,
         myId,
         card,
@@ -192,7 +251,7 @@ export default function CardGamePage({
             ...board,
             cards,
             openedCardIds: [cardId],
-            phase: "one-open",
+            phase: "one-open" as BoardPhase,
           },
         };
       }
@@ -208,7 +267,7 @@ export default function CardGamePage({
           ...board,
           cards,
           openedCardIds: [firstId, cardId],
-          phase: "resolving",
+          phase: "resolving" as BoardPhase,
         },
       };
 
@@ -255,7 +314,7 @@ export default function CardGamePage({
             ...board,
             cards,
             openedCardIds: [],
-            phase: ended ? "ended" : "idle",
+            phase: (ended ? "ended" : "idle") as BoardPhase,
             matchedPairCount,
           },
         };
@@ -271,7 +330,7 @@ export default function CardGamePage({
           ...board,
           cards,
           openedCardIds: [],
-          phase: "idle",
+          phase: "idle" as BoardPhase,
           turnUserId: opponentId,
         },
       };
@@ -290,6 +349,14 @@ export default function CardGamePage({
     return (
       <div className="grid min-h-screen place-items-center bg-slate-950 px-4 text-white">
         {errorText || "データがありません"}
+      </div>
+    );
+  }
+
+  if (!match.board) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-slate-950 px-4 text-white">
+        盤面データがありません
       </div>
     );
   }

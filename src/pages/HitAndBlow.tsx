@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // 各予測の結果
 type GuessResult = {
@@ -28,7 +28,7 @@ function calcHitBlow(secret: number[], guess: number[]) {
   return { hit, blow };
 }
 
-export default function HitAndBlow() {
+export default function HitAndBlow({ onFinished }: { onFinished?: () => void }) {
   const [secret, setSecret] = useState<number[]>(generateSecret);
   const [input, setInput] = useState<number[]>([]); // 現在入力中の数字（最大4桁）
   const [history, setHistory] = useState<GuessResult[]>([]); // 予測の履歴
@@ -66,6 +66,12 @@ export default function HitAndBlow() {
     setHistory([]);
     setCleared(false);
   };
+
+  useEffect(() => {
+    if (cleared) {
+      onFinished?.();
+    }
+  }, [cleared, onFinished]);
 
   return (
     <div style={containerStyle}>
