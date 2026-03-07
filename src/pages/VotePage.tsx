@@ -113,7 +113,7 @@ function AdditionalView({ onAdd, onFinish, canFinish, onPlayAgain, hasAdded, onH
           padding: "20px 16px", boxShadow: "4px 4px 0px #111",
         }}>
           <p style={{ fontSize: 13, fontWeight: 700, color: "#888", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            アーティスト名 / 曲名
+            曲名 / アーティスト名
           </p>
           <input
             style={{
@@ -271,7 +271,7 @@ function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinne
           )}
         </div>
 
-// メインコンポーネント
+{/* メインコンポーネント */}
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <button onClick={onPlayAgain} style={{
             width: "100%", background: "#ffd500", color: "#111",
