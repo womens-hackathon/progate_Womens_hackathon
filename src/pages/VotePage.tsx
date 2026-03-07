@@ -414,6 +414,21 @@ function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinne
   const maxVotes = Math.max(...candidates.map((c) => c.votes), 1);
   const medals = ["🥇", "🥈", "🥉"];
 
+  const handleShare = () => {
+    const shopName = "Request the BGM"; // 実際の店名があればここを書き換え
+    const shopUrl = window.location.origin; // 現在のサイトのURL
+    
+    // 自分が投票した曲、または最後に追加した曲を探す
+    const mySong = candidates.find(c => c.id === votedId)?.musicName || 
+                   (candidates.length > 0 ? candidates[candidates.length - 1].musicName : "素敵な曲");
+    
+    const text = `${shopName}で「${mySong}」をリクエストしました！🎵\nみんなも投票してね！ #BGMリクエスト #ハッカソン`;
+    
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shopUrl)}`;
+    
+    window.open(twitterUrl, "_blank", "noreferrer");
+  };
+
   return (
     <div style={{
       minHeight: "100vh",
@@ -515,13 +530,16 @@ function RankingView({ candidates, onVote, votedId, onPlayAgain, onQuit, isWinne
           }}>
             🎮 もう一度ゲームをする
           </button>
-          <button onClick={onQuit} style={{
-            width: "100%", background: "#fff", color: "#111",
-            border: "2.5px solid #111", borderRadius: 50,
-            padding: "16px 0", fontSize: 16, fontWeight: 800,
-            cursor: "pointer", boxShadow: "3px 3px 0px #111",
-          }}>
-            やめる
+          <button 
+            onClick={handleShare}
+            style={{
+              width: "100%", background: "#1d9bf0", color: "#fff",
+              border: "2.5px solid #111", borderRadius: 50,
+              padding: "16px 0", fontSize: 16, fontWeight: 800,
+              cursor: "pointer", boxShadow: "3px 3px 0px #111",
+            }}
+          >
+            🐦 X(Twitter)でシェアする
           </button>
         </div>
       </div>
