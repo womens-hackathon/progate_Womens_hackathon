@@ -7,6 +7,7 @@ import type { CardGameMatch, MemoryCard } from "./types";
 type CardGamePageProps = {
   appId: string;
   matchId: string;
+  demo?: boolean;
 };
 
 function PlayerBar({
@@ -78,6 +79,7 @@ function CardFace({
 export default function CardGamePage({
   appId,
   matchId,
+  demo = false,
 }: CardGamePageProps) {
   const [uid, setUid] = useState("");
   const [match, setMatch] = useState<CardGameMatch | null>(null);
@@ -85,6 +87,13 @@ export default function CardGamePage({
   const [errorText, setErrorText] = useState("");
 
   useEffect(() => {
+    if (demo) {
+      setUid("demo-me");
+      setMatch(createDemoMatch());
+      setLoading(false);
+      return;
+    }
+
     let unsubscribe = () => {};
 
     (async () => {
@@ -138,6 +147,11 @@ export default function CardGamePage({
       : null;
 
   async function handleCardClick(card: MemoryCard) {
+    if (demo) {
+      handleDemoCardClick(card.id);
+      return;
+    }
+
     if (!match || !myId) return;
     if (match.status !== "playing") return;
     if (!isMyTurn) return;
@@ -157,6 +171,111 @@ export default function CardGamePage({
       console.error(error);
       setErrorText(error.message ?? "カード操作に失敗しました");
     }
+  }
+
+  function handleDemoCardClick(cardId: string) {
+    setMatch((prev) => {
+      if (!prev) return prev;
+      if (prev.status !== "playing") return prev;
+      const board = prev.board;
+      if (board.phase === "resolving") return prev;
+
+      const target = board.cards[cardId];
+      if (!target || target.state !== "back") return prev;
+
+      const cards = { ...board.cards };
+      if (board.openedCardIds.length === 0) {
+        cards[cardId] = { ...target, state: "open" };
+        return {
+          ...prev,
+          board: {
+            ...board,
+            cards,
+            openedCardIds: [cardId],
+            phase: "one-open",
+          },
+        };
+      }
+
+      const firstId = board.openedCardIds[0];
+      const first = cards[firstId];
+      cards[firstId] = { ...first, state: "open" };
+      cards[cardId] = { ...target, state: "open" };
+
+      const next = {
+        ...prev,
+        board: {
+          ...board,
+          cards,
+          openedCardIds: [firstId, cardId],
+          phase: "resolving",
+        },
+      };
+
+      window.setTimeout(() => {
+        resolveDemoMatch(firstId, cardId);
+      }, 650);
+
+      return next;
+    });
+  }
+
+  function resolveDemoMatch(firstId: string, secondId: string) {
+    setMatch((prev) => {
+      if (!prev) return prev;
+      const board = prev.board;
+      if (board.phase !== "resolving") return prev;
+
+      const cards = { ...board.cards };
+      const first = cards[firstId];
+      const second = cards[secondId];
+      if (!first || !second) return prev;
+
+      const myId = board.turnUserId;
+      const opponentId = prev.memberIds.find((id) => id !== myId) ?? myId;
+      const members = { ...prev.members };
+
+      if (first.value === second.value) {
+        cards[firstId] = { ...first, state: "claimed", claimedByUserId: myId };
+        cards[secondId] = { ...second, state: "claimed", claimedByUserId: myId };
+
+        const me = members[myId];
+        members[myId] = { ...me, score: me.score + 1 };
+
+        const matchedPairCount = board.matchedPairCount + 1;
+        const totalPairs = Object.values(cards).length / 2;
+        const ended = matchedPairCount >= totalPairs;
+
+        return {
+          ...prev,
+          status: ended ? "ended" : prev.status,
+          winnerUserId: ended ? myId : prev.winnerUserId,
+          members,
+          board: {
+            ...board,
+            cards,
+            openedCardIds: [],
+            phase: ended ? "ended" : "idle",
+            matchedPairCount,
+          },
+        };
+      }
+
+      cards[firstId] = { ...first, state: "back" };
+      cards[secondId] = { ...second, state: "back" };
+
+      return {
+        ...prev,
+        members,
+        board: {
+          ...board,
+          cards,
+          openedCardIds: [],
+          phase: "idle",
+          turnUserId: opponentId,
+        },
+      };
+    });
   }
 
   if (loading) {
@@ -276,4 +395,37 @@ export default function CardGamePage({
       `}</style>
     </div>
   );
+}
+
+function createDemoMatch(): CardGameMatch {
+  const values = [1, 2, 3, 4, 5, 6];
+  const deck = [...values, ...values]
+    .sort(() => Math.random() - 0.5)
+    .map((value, index) => ({
+      id: `card-${index}`,
+      value,
+      state: "back" as const,
+      claimedByUserId: null,
+      order: index,
+    }));
+
+  const cards = Object.fromEntries(deck.map((card) => [card.id, card]));
+
+  return {
+    status: "playing",
+    gameKey: "memory",
+    winnerUserId: null,
+    memberIds: ["demo-me", "demo-you"],
+    members: {
+      "demo-me": { name: "あなた", color: "#22d3ee", score: 0 },
+      "demo-you": { name: "相手", color: "#fb7185", score: 0 },
+    },
+    board: {
+      turnUserId: "demo-me",
+      phase: "idle",
+      openedCardIds: [],
+      matchedPairCount: 0,
+      cards,
+    },
+  };
 }
