@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 type Candidate = {
@@ -24,6 +24,13 @@ type RankingViewProps = {
   onQuit: () => void;
   isWinner: boolean;
   onHome: () => void;
+};
+
+type ITunesTrack = {
+  trackId: number;
+  trackName: string;
+  artistName: string;
+  artworkUrl100?: string;
 };
 
 // 共通ヘッダー
@@ -71,76 +78,292 @@ function Header({ onHome }: { onHome: () => void }) {
 }
 
 // 曲の追加画面（勝者）
-function AdditionalView({ onAdd, onFinish, canFinish, onPlayAgain, hasAdded, onHome }: AdditionalViewProps) {
+function AdditionalView({
+  onAdd,
+  onFinish,
+  canFinish,
+  onPlayAgain,
+  hasAdded,
+  onHome,
+}: AdditionalViewProps) {
   const [input, setInput] = useState("");
+  const [results, setResults] = useState<ITunesTrack[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
 
-  const handleAdd = () => {
-    const name = input.trim();
-    if (!name || hasAdded) return;
-    onAdd(name);
+  const handleSearch = async (keyword: string) => {
+    const q = keyword.trim();
+
+    if (!q || hasAdded) {
+      setResults([]);
+      setSearched(false);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setSearched(true);
+
+      const res = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(
+          q
+        )}&entity=song&country=JP&limit=10`
+      );
+
+      if (!res.ok) {
+        throw new Error("検索に失敗しました");
+      }
+
+      const data = await res.json();
+      setResults(Array.isArray(data.results) ? data.results : []);
+    } catch (error) {
+      console.error(error);
+      setResults([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (hasAdded) return;
+
+    const trimmed = input.trim();
+
+    if (!trimmed) {
+      setResults([]);
+      setSearched(false);
+      setLoading(false);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      handleSearch(trimmed);
+    }, 350);
+
+    return () => clearTimeout(timer);
+  }, [input, hasAdded]);
+
+  const handleSelect = (track: ITunesTrack) => {
+    if (hasAdded) return;
+    onAdd(`${track.trackName} / ${track.artistName}`);
     setInput("");
+    setResults([]);
+    setSearched(false);
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#ffffff",
-      fontFamily: "'Helvetica Neue', Arial, sans-serif",
-      width: "100%",
-    }}>
-      <Header onHome={onHome} />
-      <div style={{
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#ffffff",
+        fontFamily: "'Helvetica Neue', Arial, sans-serif",
         width: "100%",
-        maxWidth: 480,
-        margin: "0 auto",
-        padding: "16px 16px 24px",
-        boxSizing: "border-box",
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-      }}>
+      }}
+    >
+      <Header onHome={onHome} />
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 480,
+          margin: "0 auto",
+          padding: "16px 16px 24px",
+          boxSizing: "border-box",
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+        }}
+      >
         <div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: "#888", textAlign: "center", letterSpacing: "0.05em", textTransform: "uppercase" }}>
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#888",
+              textAlign: "center",
+              letterSpacing: "0.05em",
+              textTransform: "uppercase",
+            }}
+          >
             🏆 Winner
           </p>
-          <h1 style={{ fontSize: 26, fontWeight: 900, textAlign: "center", color: "#111", marginTop: 4 }}>
+          <h1
+            style={{
+              fontSize: 26,
+              fontWeight: 900,
+              textAlign: "center",
+              color: "#111",
+              marginTop: 4,
+            }}
+          >
             曲のリクエスト
           </h1>
         </div>
 
-        <div style={{
-          background: "#fff", border: "2.5px solid #111", borderRadius: 20,
-          padding: "20px 16px", boxShadow: "4px 4px 0px #111",
-        }}>
-          <p style={{ fontSize: 13, fontWeight: 700, color: "#888", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+        <div
+          style={{
+            background: "#fff",
+            border: "2.5px solid #111",
+            borderRadius: 20,
+            padding: "20px 16px",
+            boxShadow: "4px 4px 0px #111",
+          }}
+        >
+          <p
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "#888",
+              marginBottom: 8,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
             曲名 / アーティスト名
           </p>
+
           <input
             style={{
-              width: "100%", border: "2px solid #111", borderRadius: 12,
-              padding: "12px 14px", fontSize: 16, fontWeight: 600, outline: "none",
-              marginBottom: 12, boxSizing: "border-box", background: "#f9f9f9", color: "#111",
+              width: "100%",
+              border: "2px solid #111",
+              borderRadius: 12,
+              padding: "12px 14px",
+              fontSize: 16,
+              fontWeight: 600,
+              outline: "none",
+              marginBottom: 12,
+              boxSizing: "border-box",
+              background: "#f9f9f9",
+              color: "#111",
             }}
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="例：夜に駆ける / YOASOBI"
             disabled={hasAdded}
           />
-          <button
-            onClick={handleAdd}
-            disabled={!input.trim() || hasAdded}
-            style={{
-              width: "100%",
-              background: !input.trim() || hasAdded ? "#ccc" : "#ff3344",
-              color: "#fff", border: "2.5px solid #111", borderRadius: 50,
-              padding: "14px 0", fontSize: 16, fontWeight: 800,
-              cursor: !input.trim() || hasAdded ? "not-allowed" : "pointer",
-              boxShadow: !input.trim() || hasAdded ? "none" : "3px 3px 0px #111",
-            }}
-          >
-            {hasAdded ? "✓ 追加済み" : "＋ 追加する"}
-          </button>
+
+          {hasAdded ? (
+            <button
+              disabled
+              style={{
+                width: "100%",
+                background: "#ccc",
+                color: "#fff",
+                border: "2.5px solid #111",
+                borderRadius: 50,
+                padding: "14px 0",
+                fontSize: 16,
+                fontWeight: 800,
+                cursor: "not-allowed",
+              }}
+            >
+              ✓ 追加済み
+            </button>
+          ) : null}
+
+          {loading && (
+            <p style={{ fontSize: 13, color: "#888", margin: "4px 0 0" }}>
+              検索しています...
+            </p>
+          )}
+
+          {!loading && searched && results.length === 0 && input.trim() && !hasAdded && (
+            <p style={{ fontSize: 13, color: "#888", margin: "4px 0 0" }}>
+              該当する曲がありません
+            </p>
+          )}
+
+          {!hasAdded && results.length > 0 && (
+            <div
+              style={{
+                marginTop: 14,
+                border: "2px solid #111",
+                borderRadius: 16,
+                overflow: "hidden",
+                background: "#fff",
+              }}
+            >
+              {results.map((track, index) => (
+                <button
+                  key={track.trackId}
+                  onClick={() => handleSelect(track)}
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "12px",
+                    background: "#fff",
+                    border: "none",
+                    borderBottom:
+                      index < results.length - 1 ? "1.5px solid #eee" : "none",
+                    cursor: "pointer",
+                    textAlign: "left",
+                  }}
+                >
+                  <img
+                    src={track.artworkUrl100 || ""}
+                    alt={track.trackName}
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 10,
+                      objectFit: "cover",
+                      background: "#f1f1f1",
+                      flexShrink: 0,
+                      border: "1px solid #ddd",
+                    }}
+                  />
+
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontSize: 15,
+                        fontWeight: 800,
+                        color: "#111",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {track.trackName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        color: "#666",
+                        marginTop: 4,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {track.artistName}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      color: "#ff3344",
+                      fontSize: 12,
+                      fontWeight: 800,
+                      border: "1.5px solid #ff3344",
+                      borderRadius: 999,
+                      padding: "6px 10px",
+                      flexShrink: 0,
+                    }}
+                  >
+                    選択
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -150,8 +373,12 @@ function AdditionalView({ onAdd, onFinish, canFinish, onPlayAgain, hasAdded, onH
             style={{
               width: "100%",
               background: canFinish ? "#ffd500" : "#ccc",
-              color: "#111", border: "2.5px solid #111", borderRadius: 50,
-              padding: "16px 0", fontSize: 16, fontWeight: 800,
+              color: "#111",
+              border: "2.5px solid #111",
+              borderRadius: 50,
+              padding: "16px 0",
+              fontSize: 16,
+              fontWeight: 800,
               cursor: canFinish ? "pointer" : "not-allowed",
               boxShadow: canFinish ? "3px 3px 0px #111" : "none",
             }}
@@ -161,10 +388,16 @@ function AdditionalView({ onAdd, onFinish, canFinish, onPlayAgain, hasAdded, onH
           <button
             onClick={onPlayAgain}
             style={{
-              width: "100%", background: "#fff", color: "#111",
-              border: "2.5px solid #111", borderRadius: 50,
-              padding: "16px 0", fontSize: 16, fontWeight: 800,
-              cursor: "pointer", boxShadow: "3px 3px 0px #111",
+              width: "100%",
+              background: "#fff",
+              color: "#111",
+              border: "2.5px solid #111",
+              borderRadius: 50,
+              padding: "16px 0",
+              fontSize: 16,
+              fontWeight: 800,
+              cursor: "pointer",
+              boxShadow: "3px 3px 0px #111",
             }}
           >
             🎮 もう一度ゲームをする
