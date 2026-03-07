@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { STORAGE_KEYS } from "../appConfig";
 
 type Candidate = {
@@ -718,8 +718,12 @@ function RankingView({
 export default function VotePage() {
 
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
-  const [phase, setPhase] = useState<"collect" | "vote">("collect");
+  // const [phase, setPhase] = useState<"collect" | "vote">("collect");
+  const [phase, setPhase] = useState<"collect" | "vote">(
+    searchParams.get("mode") === "vote" ? "vote" : "collect"
+  );
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
 
