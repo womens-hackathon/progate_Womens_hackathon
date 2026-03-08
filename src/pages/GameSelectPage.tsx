@@ -5,7 +5,9 @@ import { STORAGE_KEYS } from "../appConfig";
 type GameOption = {
   key: string;
   label: string;
+  icon: string;
   description: string;
+  detail: string;
   theme: string;
 };
 
@@ -13,25 +15,33 @@ const gameOptions: GameOption[] = [
   {
     key: "tap",
     label: "連打ゲーム",
-    description: "制限時間内にタップ数を競う",
+    icon: "👆",
+    description: "10秒間ひたすら連打！",
+    detail: "タップ数が多い方が勝ち。スマホは指、PCはスペースキーでもOK！",
     theme: "#ffd500",
   },
   {
     key: "memory",
     label: "神経衰弱",
-    description: "同じ数字のカードを揃える",
+    icon: "🃏",
+    description: "同じ数字のカードを揃えよう",
+    detail: "2枚めくって同じ数字なら取れる。多く集めた方が勝ち！",
     theme: "#22d3ee",
   },
   {
     key: "raystack",
-    label: "動物積みゲーム",
-    description: "エイを崩さずに積み上げる",
+    label: "エイ積みゲーム",
+    icon: "🐟",
+    description: "エイを崩さずに積み上げよう",
+    detail: "タップしてエイを落として積む。傾きすぎたら崩れてゲームオーバー！",
     theme: "#86efac",
   },
   {
     key: "hitblow",
     label: "ヒット&ブロー",
-    description: "4桁の数字を当てる",
+    icon: "🔢",
+    description: "相手の4桁の数字を当てよう",
+    detail: "数字と位置が合えばHIT、数字だけ合えばBLOW。先に当てた方が勝ち！",
     theme: "#c4b5fd",
   },
 ];
@@ -68,10 +78,14 @@ export default function GameSelectPage() {
               borderColor: game.theme,
             }}
           >
-            <span style={{ ...tagStyle, background: game.theme }}>
-              {game.label}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 32 }}>{game.icon}</span>
+              <span style={{ ...tagStyle, background: game.theme }}>
+                {game.label}
+              </span>
+            </div>
             <span style={descStyle}>{game.description}</span>
+            <span style={detailStyle}>{game.detail}</span>
           </button>
         ))}
       </div>
@@ -162,6 +176,13 @@ const tagStyle: React.CSSProperties = {
 
 const descStyle: React.CSSProperties = {
   fontSize: 14,
-  fontWeight: 600,
-  color: "#475569",
+  fontWeight: 700,
+  color: "#0f172a",
+};
+
+const detailStyle: React.CSSProperties = {
+  fontSize: 12,
+  fontWeight: 500,
+  color: "#64748b",
+  lineHeight: 1.6,
 };
