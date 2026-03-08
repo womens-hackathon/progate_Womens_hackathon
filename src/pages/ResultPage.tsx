@@ -46,17 +46,18 @@ export default function ResultPage() {
           const data = snap.data() as {
             status?: string;
             winnerUserId?: string | null;
+            isDraw?: boolean;
             members?: Record<string, { nickname?: string }>;
           };
-          if (data.status !== "ended" || !data.winnerUserId) {
+          if (data.status !== "ended" || (!data.winnerUserId && !data.isDraw)) {
             setState("waiting");
             return;
           }
-          if (!data.winnerUserId) {
+          if (data.isDraw) {
             setState("draw");
-            return;
+          } else {
+            setState(data.winnerUserId === user.uid ? "win" : "lose");
           }
-          setState(data.winnerUserId === user.uid ? "win" : "lose");
 
           // スコアを取得
           try {
@@ -90,7 +91,7 @@ export default function ResultPage() {
           {state === "waiting" && "結果待ち"}
           {state === "win" && "勝ち！"}
           {state === "lose" && "負け…"}
-          {state === "draw" && "引き分け（両方負け）"}
+          {state === "draw" && "引き分け"}
           {state === "error" && "エラー"}
         </h1>
         {(state === "waiting" || state === "loading") && (
@@ -112,8 +113,20 @@ export default function ResultPage() {
         )}
 
         <button
-          // onClick={() => navigate("/vote")}
-          onClick={() => navigate(state === "lose" ? "/vote?mode=vote" : "/vote")}
+          onClick={() => {
+            if (state === "win") {
+              const hasAdded = localStorage.getItem(STORAGE_KEYS.songAdded);
+              if (!hasAdded) {
+                localStorage.setItem(STORAGE_KEYS.songAdded, "true");
+                navigate("/vote");
+              } else {
+                navigate("/vote?mode=vote&votes=2");
+              }
+            } else {
+              // lose or draw → 投票画面
+              navigate("/vote?mode=vote");
+            }
+          }}
           style={primaryButtonStyle}
         >
           次へ進む

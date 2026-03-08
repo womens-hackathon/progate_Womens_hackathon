@@ -64,6 +64,7 @@ export default function GamePlayPage() {
             tx.update(matchRef, {
               status: "ended",
               winnerUserId,
+              isDraw: tries === otherTries,
               members,
               updatedAt: serverTimestamp(),
             });
@@ -76,11 +77,38 @@ export default function GamePlayPage() {
           return;
         }
 
-        tx.update(matchRef, {
-          status: "ended",
-          winnerUserId: user.uid,
-          updatedAt: serverTimestamp(),
-        });
+        // タップ・エイ積みなどスコア系ゲーム
+        const score = typeof payload === "number" ? payload : 0;
+        const members = { ...(current.members ?? {}) };
+        const existing = members[user.uid] ?? {};
+        members[user.uid] = {
+          ...existing,
+          score,
+          scoreFinishedAt: serverTimestamp(),
+        };
+
+        const otherId = (current.memberIds ?? []).find((id) => id !== user.uid) ?? null;
+        const other = otherId ? members[otherId] : null;
+        const otherScore = other?.score ?? null;
+
+        if (otherScore != null) {
+          // 両者のスコアが揃った → 勝敗判定
+          const winnerUserId =
+            score === otherScore ? null : score > otherScore ? user.uid : otherId ?? null;
+          tx.update(matchRef, {
+            status: "ended",
+            winnerUserId,
+            isDraw: score === otherScore,
+            members,
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          // まだ相手のスコアが来ていない
+          tx.update(matchRef, {
+            members,
+            updatedAt: serverTimestamp(),
+          });
+        }
       });
     } catch (error) {
       console.warn("finish match update failed", error);
