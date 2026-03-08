@@ -28,7 +28,12 @@ export default function ResultPage() {
       return;
     }
 
-    const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+    const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
+    if (!tenpoId) {
+      setState("error");
+      setErrorText("店舗IDが見つかりません");
+      return;
+    }
     const matchPath = `apps/${APP_ID}/general/${tenpoId}/matches/${matchId}`;
     let unsub = () => {};
 

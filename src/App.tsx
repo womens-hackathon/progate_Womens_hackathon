@@ -44,8 +44,8 @@ function App() {
     <>
       <WaitingBadge />
       <Routes>
-      <Route path="/" element={<Navigate to="/default" replace />} />
-      <Route path="/:id" element={<LoginPage />} />
+      <Route path="/" element={<Navigate to="/rooms/default" replace />} />
+      <Route path="/rooms/:id" element={<LoginPage />} />
       <Route path="/games" element={<GameSelectPage />} />
       <Route path="/match" element={<MatchWaitingPage />} />
       <Route path="/play" element={<GamePlayPage />} />

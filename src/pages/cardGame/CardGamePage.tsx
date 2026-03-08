@@ -106,7 +106,12 @@ export default function CardGamePage({
         setUid(user.uid);
 
         const tenpoId =
-          localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+          localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
+        if (!tenpoId) {
+          setErrorText("店舗IDが見つかりません");
+          setLoading(false);
+          return;
+        }
         const matchRef = doc(
           db,
           `apps/${appId}/general/${tenpoId}/matches/${matchId}`
@@ -168,7 +173,8 @@ export default function CardGamePage({
     if (match.board.turnUserId === uid) return;
 
     const tenpoId =
-      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
+    if (!tenpoId) return;
     const matchRef = doc(
       db,
       `apps/${appId}/general/${tenpoId}/matches/${matchId}`
@@ -208,7 +214,8 @@ export default function CardGamePage({
       if (remain <= 0) {
         void runTransaction(db, async (tx) => {
           const tenpoId =
-            localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+            localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
+          if (!tenpoId) return;
           const matchRef = doc(
             db,
             `apps/${appId}/general/${tenpoId}/matches/${matchId}`
@@ -260,7 +267,8 @@ export default function CardGamePage({
         : null;
 
     const tenpoId =
-      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
+    if (!tenpoId) return;
     const matchRef = doc(
       db,
       `apps/${appId}/general/${tenpoId}/matches/${matchId}`
@@ -328,7 +336,8 @@ export default function CardGamePage({
     try {
       setErrorText("");
       const tenpoId =
-        localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+        localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
+      if (!tenpoId) return;
       await flipCard({
         db,
         appId,

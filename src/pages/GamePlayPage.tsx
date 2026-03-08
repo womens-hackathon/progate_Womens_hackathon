@@ -22,7 +22,8 @@ export default function GamePlayPage() {
     }
 
     try {
-      const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+      const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
+      if (!tenpoId) return;
       const user = await ensureAuth();
       const matchRef = doc(
         db,
@@ -119,7 +120,8 @@ export default function GamePlayPage() {
 
   useEffect(() => {
     if (!matchId) return;
-    const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+    const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
+    if (!tenpoId) return;
     const matchRef = doc(db, `apps/${APP_ID}/general/${tenpoId}/matches/${matchId}`);
     const unsub = onSnapshot(matchRef, (snap) => {
       const data = snap.data() as { status?: string } | undefined;
