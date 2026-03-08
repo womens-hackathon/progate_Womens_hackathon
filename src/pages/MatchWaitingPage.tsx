@@ -26,6 +26,7 @@ export default function MatchWaitingPage() {
   const userIdRef = useRef<string | null>(null);
   const matchIdRef = useRef<string | null>(null);
   const stateRef = useRef<MatchState>("finding");
+  const countdownStartedRef = useRef(false);
 
   const gameKey = useMemo(() => {
     const fromQuery = params.get("game");
@@ -202,21 +203,22 @@ export default function MatchWaitingPage() {
   useEffect(() => {
     if (state !== "matched" || !matchId) {
       setCountdown(null);
+      countdownStartedRef.current = false;
       return;
     }
 
-    setCountdown(5);
-    const id = window.setInterval(() => {
-      setCountdown((prev) => {
-        if (prev == null) return prev;
-        if (prev <= 1) {
-          clearInterval(id);
-          navigate(`/play?game=${encodeURIComponent(gameKey)}&matchId=${matchId}`);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (countdownStartedRef.current) return;
+    countdownStartedRef.current = true;
+    const deadline = Date.now() + 5000;
+    const tick = () => {
+      const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setCountdown(remain);
+      if (remain <= 0) {
+        navigate(`/play?game=${encodeURIComponent(gameKey)}&matchId=${matchId}`);
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 500);
 
     return () => clearInterval(id);
   }, [gameKey, matchId, navigate, state]);
@@ -281,11 +283,6 @@ export default function MatchWaitingPage() {
       });
     };
   }, [tenpoId]);
-
-  const handleStart = () => {
-    if (!matchId) return;
-    navigate(`/play?game=${encodeURIComponent(gameKey)}&matchId=${matchId}`);
-  };
 
   return (
     <div style={pageStyle}>
@@ -380,17 +377,6 @@ const dotStyle = (ok: boolean): React.CSSProperties => ({
   boxShadow: "0 0 6px rgba(34,211,238,0.9)",
 });
 
-const primaryButtonStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#38bdf8",
-  color: "#0f172a",
-  border: "2px solid #fff",
-  borderRadius: 999,
-  padding: "12px 0",
-  fontSize: 16,
-  fontWeight: 800,
-  cursor: "pointer",
-};
 
 function createMemoryBoard(turnUserId: string) {
   const values = [1, 2, 3, 4, 5, 6];

@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
 import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
-import { auth, db, ensureAuth } from "../../firebase";
+import { useEffect, useMemo, useState } from "react";
 import { STORAGE_KEYS } from "../../appConfig";
+import { auth, db, ensureAuth } from "../../firebase";
 import { flipCard } from "./flipCard";
 import type { BoardPhase, CardGameMatch, MemoryCard } from "./types";
 
@@ -21,12 +21,14 @@ function PlayerBar({
   score: number;
 }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl bg-white/10 px-4 py-3 backdrop-blur-sm">
+    <div className="flex items-center justify-between rounded-2xl border-4 border-black bg-white px-4 py-3 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
       <div>
-        <div className="text-xs text-white/70">{label}</div>
-        <div className="text-lg font-bold text-white">{name}</div>
+        <div className="text-xs font-black uppercase tracking-widest text-neutral-500">
+          {label}
+        </div>
+        <div className="text-lg font-black text-black">{name}</div>
       </div>
-      <div className="text-3xl font-extrabold text-white">{score}</div>
+      <div className="text-3xl font-black text-black">{score}</div>
     </div>
   );
 }
@@ -40,7 +42,7 @@ function CardFace({
 }) {
   if (card.state === "open") {
     return (
-      <span className="grid h-full w-full place-items-center text-[clamp(2rem,6vw,3.5rem)] font-extrabold text-slate-900 animate-[fadeIn_.22s_ease-out]">
+      <span className="grid h-full w-full place-items-center text-[clamp(2rem,6vw,3.5rem)] font-black text-black animate-[fadeIn_.22s_ease-out]">
         {card.value}
       </span>
     );
@@ -48,18 +50,18 @@ function CardFace({
 
   if (card.state === "claimed") {
     return (
-      <span
-        className="absolute inset-0"
-        style={{
-          backgroundColor: claimedColor,
-          opacity: 1,
-        }}
-      >
+      <span className="absolute inset-0">
         <span
-          className="absolute inset-0 opacity-20"
+          className="absolute inset-0"
+          style={{
+            backgroundColor: claimedColor,
+          }}
+        />
+        <span
+          className="absolute inset-0 opacity-25"
           style={{
             backgroundImage:
-              "linear-gradient(45deg, rgba(255,255,255,0.9) 0 10%, transparent 10% 20%, rgba(255,255,255,0.9) 20% 30%, transparent 30% 40%, rgba(255,255,255,0.9) 40% 50%, transparent 50% 60%, rgba(255,255,255,0.9) 60% 70%, transparent 70% 80%, rgba(255,255,255,0.9) 80% 90%, transparent 90%)",
+              "repeating-linear-gradient(-45deg, rgba(255,255,255,0.85) 0 8px, transparent 8px 16px)",
           }}
         />
       </span>
@@ -68,10 +70,10 @@ function CardFace({
 
   return (
     <span
-      className="absolute inset-3 rounded-xl"
+      className="absolute inset-2 rounded-xl border-2 border-black bg-white"
       style={{
         background:
-          "radial-gradient(circle at 20% 25%, rgba(255,255,255,0.16) 0 8px, transparent 9px), radial-gradient(circle at 75% 30%, rgba(255,255,255,0.12) 0 8px, transparent 9px), radial-gradient(circle at 40% 75%, rgba(255,255,255,0.11) 0 8px, transparent 9px), linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))",
+          "radial-gradient(circle at 30% 30%, rgba(0,0,0,0.12) 0 6px, transparent 7px), radial-gradient(circle at 70% 70%, rgba(0,0,0,0.08) 0 5px, transparent 6px)",
       }}
     />
   );
@@ -86,6 +88,7 @@ export default function CardGamePage({
   const [match, setMatch] = useState<CardGameMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState("");
+  const [remainSec, setRemainSec] = useState<number | null>(null);
 
   useEffect(() => {
     if (demo) {
@@ -183,6 +186,114 @@ export default function CardGamePage({
         updatedAt: serverTimestamp(),
       });
     });
+  }, [appId, demo, match, matchId, uid]);
+
+  useEffect(() => {
+    if (demo) return;
+    if (!match || match.status !== "playing") {
+      setRemainSec(null);
+      return;
+    }
+
+    const LIMIT_SEC = 60;
+    const createdAt = (match as any).createdAt;
+    const createdAtMs =
+      typeof createdAt?.toMillis === "function" ? createdAt.toMillis() : null;
+    const startedAt = createdAtMs ?? Date.now();
+
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      const remain = Math.max(0, LIMIT_SEC - elapsed);
+      setRemainSec(remain);
+      if (remain <= 0) {
+        void runTransaction(db, async (tx) => {
+          const tenpoId =
+            localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+          const matchRef = doc(
+            db,
+            `apps/${appId}/general/${tenpoId}/matches/${matchId}`
+          );
+          const snap = await tx.get(matchRef);
+          if (!snap.exists()) return;
+          const current = snap.data() as CardGameMatch;
+          if (current.status !== "playing") return;
+
+          const entries = Object.entries(current.members ?? {});
+          const [firstId, first] = entries[0] ?? [];
+          const [secondId, second] = entries[1] ?? [];
+          const firstScore = first?.score ?? 0;
+          const secondScore = second?.score ?? 0;
+          const winnerUserId =
+            firstScore === secondScore
+              ? null
+              : firstScore > secondScore
+              ? firstId
+              : secondId ?? null;
+
+          tx.update(matchRef, {
+            status: "ended",
+            winnerUserId,
+            "board.phase": "ended",
+            updatedAt: serverTimestamp(),
+          });
+        });
+      }
+    };
+
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [appId, demo, match, matchId]);
+
+  useEffect(() => {
+    if (demo) return;
+    if (!match || !match.board || !uid) return;
+    if (match.status !== "playing") return;
+    if (match.memberIds.length < 2) return;
+    if (match.board.turnUserId === uid) return;
+    if (match.board.phase !== "idle") return;
+
+    const updatedAt = (match as any).updatedAt;
+    const updatedAtMs =
+      typeof updatedAt?.toMillis === "function"
+        ? updatedAt.toMillis()
+        : null;
+
+    const tenpoId =
+      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+    const matchRef = doc(
+      db,
+      `apps/${appId}/general/${tenpoId}/matches/${matchId}`
+    );
+
+    const timeoutId = window.setTimeout(() => {
+      void runTransaction(db, async (tx) => {
+        const snap = await tx.get(matchRef);
+        if (!snap.exists()) return;
+        const current = snap.data() as CardGameMatch & { updatedAt?: any };
+        if (current.status !== "playing") return;
+        if (current.memberIds.length < 2) return;
+        if (current.board.turnUserId === uid) return;
+        if (current.board.phase !== "idle") return;
+
+        const currentUpdatedAt = (current as any).updatedAt;
+        const currentUpdatedAtMs =
+          typeof currentUpdatedAt?.toMillis === "function"
+            ? currentUpdatedAt.toMillis()
+            : null;
+
+        if (updatedAtMs && currentUpdatedAtMs && currentUpdatedAtMs !== updatedAtMs) {
+          return;
+        }
+
+        tx.update(matchRef, {
+          "board.turnUserId": uid,
+          updatedAt: serverTimestamp(),
+        });
+      });
+    }, 10000);
+
+    return () => window.clearTimeout(timeoutId);
   }, [appId, demo, match, matchId, uid]);
 
   const cards = useMemo(() => {
@@ -362,7 +473,7 @@ export default function CardGamePage({
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white">
+    <div className="min-h-screen bg-neutral-100 text-black">
       <div className="mx-auto grid min-h-screen max-w-[720px] grid-rows-[auto_auto_1fr_auto_auto] gap-4 px-4 py-4">
         <PlayerBar
           label="相手"
@@ -373,8 +484,8 @@ export default function CardGamePage({
         <section className="flex items-center justify-between gap-3">
           <div
             className={[
-              "rounded-full bg-white/10 px-4 py-2 text-sm font-bold",
-              isMyTurn ? "ring-2 ring-cyan-400" : "ring-2 ring-rose-400",
+              "rounded-full border-4 border-black bg-white px-4 py-2 text-sm font-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]",
+              isMyTurn ? "text-red-600" : "text-emerald-600",
             ].join(" ")}
           >
             {match.status === "ended"
@@ -386,8 +497,13 @@ export default function CardGamePage({
               : "相手のターン"}
           </div>
 
-          <div className="text-sm text-white/80">
+          <div className="text-sm font-bold text-black">
             {match.board.matchedPairCount} / 6 ペア
+            {remainSec !== null && (
+              <span className="ml-3 rounded-full border-2 border-black bg-yellow-300 px-2 py-1 text-xs font-black">
+                残り {remainSec}s
+              </span>
+            )}
           </div>
         </section>
 
@@ -399,18 +515,18 @@ export default function CardGamePage({
                 : "#666";
 
             const baseClass =
-              "relative aspect-[3/4] overflow-hidden rounded-2xl border-0 shadow-[0_8px_20px_rgba(0,0,0,0.28)] transition duration-150";
+              "relative aspect-[3/4] overflow-hidden rounded-2xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition duration-150";
             const stateClass =
               card.state === "open"
-                ? "bg-gradient-to-br from-slate-50 to-slate-200 text-slate-900"
-                : "bg-gradient-to-br from-slate-800 to-slate-950 text-white";
+                ? "bg-white text-black"
+                : "bg-neutral-50 text-black";
             const disabledClass =
               match.status !== "playing" ||
               !isMyTurn ||
               card.state !== "back" ||
               match.board.phase === "resolving"
                 ? "cursor-default"
-                : "cursor-pointer hover:-translate-y-0.5";
+                : "cursor-pointer hover:-translate-y-1";
 
             return (
               <button
@@ -438,9 +554,9 @@ export default function CardGamePage({
 
         <div className="space-y-1">
           {errorText ? (
-            <p className="text-sm text-rose-300">{errorText}</p>
+            <p className="text-sm font-bold text-red-600">{errorText}</p>
           ) : null}
-          <p className="text-center text-xs text-white/60">
+          <p className="text-center text-xs font-bold text-neutral-500">
             uid: {auth.currentUser?.uid}
           </p>
         </div>

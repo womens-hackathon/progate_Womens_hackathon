@@ -24,6 +24,7 @@ type RankingViewProps = {
   candidates: Candidate[];
   onVote: (id: string) => void;
   votedId: string | null;
+  votesRemaining: number;
   onPlayAgain: () => void;
   onQuit: () => void;
   isWinner: boolean;
@@ -461,6 +462,7 @@ function RankingView({
   candidates,
   onVote,
   votedId,
+  votesRemaining,
   onPlayAgain,
   onQuit,
   isWinner,
@@ -523,7 +525,7 @@ function RankingView({
           </h1>
 
           <p style={{ fontSize: 13, color: "#888", textAlign: "center", marginTop: 4 }}>
-            {isWinner ? "現在のランキングです" : votedId ? "結果をリアルタイムで確認できます" : "気に入った曲に1票投票してください"}
+            {isWinner ? "現在のランキングです" : votesRemaining <= 0 ? "結果をリアルタイムで確認できます" : `気に入った曲に投票してください（あと${votesRemaining}票）`}
           </p>
         </div>
 
@@ -654,7 +656,7 @@ function RankingView({
                     )}
 
                     {!isWinner && (
-                      isMyVote ? (
+                      isMyVote && votesRemaining <= 0 ? (
                         <div style={{
                           fontSize: 13,
                           fontWeight: 800,
@@ -669,18 +671,18 @@ function RankingView({
                       ) : (
                         <button
                           onClick={() => onVote(c.id)}
-                          disabled={votedId !== null}
+                          disabled={votesRemaining <= 0}
                           style={{
-                            background: votedId !== null ? "#eee" : "#ff3344",
-                            color: votedId !== null ? "#aaa" : "#fff",
+                            background: votesRemaining <= 0 ? "#eee" : "#ff3344",
+                            color: votesRemaining <= 0 ? "#aaa" : "#fff",
                             border: "2px solid #111",
                             borderRadius: 50,
                             padding: "6px 14px",
                             fontSize: 13,
                             fontWeight: 800,
-                            cursor: votedId !== null ? "not-allowed" : "pointer",
+                            cursor: votesRemaining <= 0 ? "not-allowed" : "pointer",
                             flexShrink: 0,
-                            boxShadow: votedId !== null ? "none" : "2px 2px 0px #111",
+                            boxShadow: votesRemaining <= 0 ? "none" : "2px 2px 0px #111",
                           }}
                         >
                           投票
@@ -795,6 +797,12 @@ export default function VotePage() {
         setIsWinner(false);
         return;
       }
+  const initialVotes = parseInt(searchParams.get("votes") ?? "1", 10);
+
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+
+  const [votedId, setVotedId] = useState<string | null>(null);
+  const [votesRemaining, setVotesRemaining] = useState(initialVotes);
 
       const matchData = matchSnap.data();
       const winnerUserId = matchData.winnerUserId;
@@ -845,9 +853,10 @@ export default function VotePage() {
 
   const handleVote = (id: string) => {
 
-    if (votedId !== null) return;
+    if (votesRemaining <= 0) return;
 
     setVotedId(id);
+    setVotesRemaining((prev) => prev - 1);
 
     setCandidates((prev) =>
       prev.map((c) =>
@@ -934,6 +943,7 @@ export default function VotePage() {
       candidates={sortedCandidates}
       onVote={handleVote}
       votedId={votedId}
+      votesRemaining={votesRemaining}
       onPlayAgain={handlePlayAgain}
       onQuit={handleQuit}
       isWinner={isWinner}

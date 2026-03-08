@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { collection, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
 import TapGame from "./TapGame";
 import RayStack from "./RayStack";
 import HitAndBlow from "./HitAndBlow";
@@ -13,6 +13,109 @@ export default function GamePlayPage() {
   const [params] = useSearchParams();
   const gameKey = params.get("game") ?? "tap";
   const matchId = params.get("matchId") ?? "";
+
+  const handleFinished = useCallback(
+    async (payload?: { tries?: number } | number) => {
+    if (!matchId) {
+      navigate("/result");
+      return;
+    }
+
+    try {
+      const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+      const user = await ensureAuth();
+      const matchRef = doc(
+        db,
+        `apps/${APP_ID}/general/${tenpoId}/matches/${matchId}`
+      );
+
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(matchRef);
+        if (!snap.exists()) return;
+        const current = snap.data() as {
+          status?: string;
+          members?: Record<string, any>;
+          memberIds?: string[];
+        };
+        if (current.status === "ended") return;
+
+        if (gameKey === "hitblow") {
+          const tries =
+            typeof payload === "number" ? payload : payload?.tries ?? null;
+          const members = { ...(current.members ?? {}) };
+          const existing = members[user.uid] ?? {};
+          members[user.uid] = {
+            ...existing,
+            hitblowTries: tries,
+            hitblowFinishedAt: serverTimestamp(),
+          };
+
+          const otherId = (current.memberIds ?? []).find((id) => id !== user.uid) ?? null;
+          const other = otherId ? members[otherId] : null;
+          const otherTries = other?.hitblowTries ?? null;
+
+          if (tries != null && otherTries != null) {
+            const winnerUserId =
+              tries === otherTries
+                ? null
+                : tries < otherTries
+                ? user.uid
+                : otherId ?? null;
+            tx.update(matchRef, {
+              status: "ended",
+              winnerUserId,
+              isDraw: tries === otherTries,
+              members,
+              updatedAt: serverTimestamp(),
+            });
+          } else {
+            tx.update(matchRef, {
+              members,
+              updatedAt: serverTimestamp(),
+            });
+          }
+          return;
+        }
+
+        // タップ・エイ積みなどスコア系ゲーム
+        const score = typeof payload === "number" ? payload : 0;
+        const members = { ...(current.members ?? {}) };
+        const existing = members[user.uid] ?? {};
+        members[user.uid] = {
+          ...existing,
+          score,
+          scoreFinishedAt: serverTimestamp(),
+        };
+
+        const otherId = (current.memberIds ?? []).find((id) => id !== user.uid) ?? null;
+        const other = otherId ? members[otherId] : null;
+        const otherScore = other?.score ?? null;
+
+        if (otherScore != null) {
+          // 両者のスコアが揃った → 勝敗判定
+          const winnerUserId =
+            score === otherScore ? null : score > otherScore ? user.uid : otherId ?? null;
+          tx.update(matchRef, {
+            status: "ended",
+            winnerUserId,
+            isDraw: score === otherScore,
+            members,
+            updatedAt: serverTimestamp(),
+          });
+        } else {
+          // まだ相手のスコアが来ていない
+          tx.update(matchRef, {
+            members,
+            updatedAt: serverTimestamp(),
+          });
+        }
+      });
+    } catch (error) {
+      console.warn("finish match update failed", error);
+    } finally {
+      navigate(`/result?matchId=${encodeURIComponent(matchId)}`);
+    }
+  }, [gameKey, matchId, navigate]);
 
   useEffect(() => {
     if (!matchId) return;
@@ -29,42 +132,6 @@ export default function GamePlayPage() {
   }, [matchId, navigate]);
 
   const content = useMemo(() => {
-    const goResult = async (score: number) => {
-      if (!matchId) {
-        navigate("/result");
-        return;
-      }
-      try {
-        const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
-        const user = await ensureAuth();
-        const matchPath = `apps/${APP_ID}/general/${tenpoId}/matches/${matchId}`;
-
-        // 自分のスコアを保存
-        await setDoc(doc(db, `${matchPath}/scores/${user.uid}`), { score, uid: user.uid });
-
-        if (gameKey === "hitblow") {
-          // hitblow: 先に当てた方が勝ち → winnerUserId が未設定なら自分が勝者
-          const matchSnap = await getDoc(doc(db, matchPath));
-          const matchData = matchSnap.data() as { winnerUserId?: string } | undefined;
-          if (!matchData?.winnerUserId) {
-            await updateDoc(doc(db, matchPath), { status: "ended", winnerUserId: user.uid });
-          }
-        } else {
-          // その他: 両者のスコアが揃ったら比較して勝者を決定
-          const scoresSnap = await getDocs(collection(db, `${matchPath}/scores`));
-          if (scoresSnap.size >= 2) {
-            const scores = scoresSnap.docs.map(d => d.data() as { score: number; uid: string });
-            const winner = scores.reduce((a, b) => a.score >= b.score ? a : b);
-            await updateDoc(doc(db, matchPath), { status: "ended", winnerUserId: winner.uid });
-          }
-        }
-      } catch (e) {
-        console.error("goResult error:", e);
-      }
-
-      navigate(`/result?matchId=${encodeURIComponent(matchId)}`);
-    };
-
     if (gameKey === "memory") {
       return (
         <CardGamePage
@@ -75,21 +142,18 @@ export default function GamePlayPage() {
       );
     }
     if (gameKey === "raystack") {
-      return <RayStack onFinished={goResult} />;
+      return <RayStack onFinished={handleFinished} />;
     }
     if (gameKey === "hitblow") {
-      return <HitAndBlow onFinished={goResult} />;
+      return <HitAndBlow onFinished={handleFinished} />;
     }
-    return <TapGame onFinished={goResult} />;
-  }, [gameKey, matchId, navigate]);
+    return <TapGame onFinished={handleFinished} />;
+  }, [gameKey, handleFinished, matchId]);
 
   return (
     <div style={pageStyle}>
       <div style={headerStyle}>
         <span style={headerTitleStyle}>Now Playing</span>
-        <button onClick={() => navigate("/vote")} style={headerButtonStyle}>
-          投票へ
-        </button>
       </div>
       <div style={contentStyle}>{content}</div>
     </div>
@@ -117,17 +181,6 @@ const headerTitleStyle: React.CSSProperties = {
   fontSize: 16,
   fontWeight: 800,
   letterSpacing: "0.08em",
-};
-
-const headerButtonStyle: React.CSSProperties = {
-  background: "#38bdf8",
-  color: "#0f172a",
-  border: "2px solid #fff",
-  borderRadius: 999,
-  padding: "6px 14px",
-  fontSize: 12,
-  fontWeight: 800,
-  cursor: "pointer",
 };
 
 const contentStyle: React.CSSProperties = {
