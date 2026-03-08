@@ -12,7 +12,7 @@ import {
   where,
 } from "firebase/firestore";
 import { db, ensureAuth } from "../firebase";
-import { APP_ID, DEFAULT_TENPO_ID, STORAGE_KEYS } from "../appConfig";
+import { APP_ID, STORAGE_KEYS } from "../appConfig";
 
 type MatchState = "finding" | "waiting" | "matched" | "error";
 
@@ -35,9 +35,7 @@ export default function MatchWaitingPage() {
   }, [params]);
 
   const tenpoId = useMemo(() => {
-    return (
-      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? DEFAULT_TENPO_ID
-    );
+    return localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "";
   }, []);
 
   useEffect(() => {
@@ -54,6 +52,12 @@ export default function MatchWaitingPage() {
 
     let unsub = () => {};
     let active = true;
+
+    if (!tenpoId) {
+      setErrorText("店舗IDが見つかりません");
+      setState("error");
+      return;
+    }
 
     const matchesPath = `apps/${APP_ID}/general/${tenpoId}/matches`;
 
