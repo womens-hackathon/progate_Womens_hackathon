@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, onSnapshot, setDoc, updateDoc } from "firebase/firestore";
 import TapGame from "./TapGame";
 import RayStack from "./RayStack";
 import HitAndBlow from "./HitAndBlow";
@@ -103,6 +103,42 @@ export default function GamePlayPage() {
   }, [matchId, navigate]);
 
   const content = useMemo(() => {
+    const goResult = async (score: number) => {
+      if (!matchId) {
+        navigate("/result");
+        return;
+      }
+      try {
+        const tenpoId = localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+        const user = await ensureAuth();
+        const matchPath = `apps/${APP_ID}/general/${tenpoId}/matches/${matchId}`;
+
+        // 自分のスコアを保存
+        await setDoc(doc(db, `${matchPath}/scores/${user.uid}`), { score, uid: user.uid });
+
+        if (gameKey === "hitblow") {
+          // hitblow: 先に当てた方が勝ち → winnerUserId が未設定なら自分が勝者
+          const matchSnap = await getDoc(doc(db, matchPath));
+          const matchData = matchSnap.data() as { winnerUserId?: string } | undefined;
+          if (!matchData?.winnerUserId) {
+            await updateDoc(doc(db, matchPath), { status: "ended", winnerUserId: user.uid });
+          }
+        } else {
+          // その他: 両者のスコアが揃ったら比較して勝者を決定
+          const scoresSnap = await getDocs(collection(db, `${matchPath}/scores`));
+          if (scoresSnap.size >= 2) {
+            const scores = scoresSnap.docs.map(d => d.data() as { score: number; uid: string });
+            const winner = scores.reduce((a, b) => a.score >= b.score ? a : b);
+            await updateDoc(doc(db, matchPath), { status: "ended", winnerUserId: winner.uid });
+          }
+        }
+      } catch (e) {
+        console.error("goResult error:", e);
+      }
+
+      navigate(`/result?matchId=${encodeURIComponent(matchId)}`);
+    };
+
     if (gameKey === "memory") {
       return (
         <CardGamePage
