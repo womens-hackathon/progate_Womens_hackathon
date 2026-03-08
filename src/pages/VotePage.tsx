@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../firebase/database";
 import { STORAGE_KEYS } from "../appConfig";
 
 type Candidate = {
@@ -476,7 +478,7 @@ function RankingView({
     
     // 自分が投票した曲、または最後に追加した曲を探す
     const mySong = candidates.find(c => c.id === votedId)?.musicName || 
-                   (candidates.length > 0 ? candidates[candidates.length - 1].musicName : "素敵な曲");
+    (candidates.length > 0 ? candidates[candidates.length - 1].musicName : "素敵な曲");
     
     const text = `${shopName}で「${mySong}」をリクエストしました！🎵\nみんなも投票してね！ #BGMリクエスト #ハッカソン`;
     
@@ -486,25 +488,30 @@ function RankingView({
   };
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "#ffffff",
-      fontFamily: "'Helvetica Neue', Arial, sans-serif",
-      width: "100%",
-    }}>
+  <div style={{
+    height: "100vh",
+    background: "#ffffff",
+    fontFamily: "'Helvetica Neue', Arial, sans-serif",
+    width: "100%",
+    display: "flex",
+    flexDirection: "column",
+    overflow: "hidden",
+  }}>
 
       <Header onHome={onHome} />
 
       <div style={{
-        width: "100%",
-        maxWidth: 480,
-        margin: "0 auto",
-        padding: "16px 16px 24px",
-        boxSizing: "border-box",
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-      }}>
+  width: "100%",
+  maxWidth: 480,
+  margin: "0 auto",
+  padding: "16px 16px 24px",
+  boxSizing: "border-box",
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+  flex: 1,
+  minHeight: 0,
+  }}>
 
         <div>
           <p style={{ fontSize: 13, fontWeight: 700, color: "#888", textAlign: "center", letterSpacing: "0.05em", textTransform: "uppercase" }}>
@@ -520,13 +527,21 @@ function RankingView({
           </p>
         </div>
 
-        <div style={{
-          background: "#fff",
-          border: "2.5px solid #111",
-          borderRadius: 20,
-          padding: "8px 0",
-          boxShadow: "4px 4px 0px #111",
-        }}>
+        <div
+  style={{
+    flex: 1,
+    minHeight: 0,
+    overflowY: "auto",
+  }}
+  >
+    <div
+    style={{
+    background: "#fff",
+    border: "2.5px solid #111",
+    borderRadius: 20,
+    padding: "8px 0",
+    boxShadow: "4px 4px 0px #111",
+  }}>
 
           {candidates.length === 0 ? (
             <p style={{ textAlign: "center", color: "#888", padding: "32px 0", fontSize: 14 }}>
@@ -681,6 +696,7 @@ function RankingView({
             })
           )}
 
+                  </div>
         </div>
 
         {/* メインコンポーネント */}
@@ -745,23 +761,59 @@ export default function VotePage() {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  // const [phase, setPhase] = useState<"collect" | "vote">("collect");
-  const [phase, setPhase] = useState<"collect" | "vote">(
-    searchParams.get("mode") === "vote" ? "vote" : "collect"
-  );
-
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-
-  const [votedId, setVotedId] = useState<string | null>(null);
-
-  const [hasAdded, setHasAdded] = useState(false);
-
+  
+  const [phase, setPhase] = useState<"collect" | "vote" | null>(null);
   const [isWinner, setIsWinner] = useState(false);
-
+  const [loadingResult, setLoadingResult] = useState(true);
+  
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [votedId, setVotedId] = useState<string | null>(null);
+  const [hasAdded, setHasAdded] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
-
   const [audio] = useState(() => new Audio());
+
+  //勝敗判定
+  useEffect(() => {
+  const decidePhase = async () => {
+    try {
+      const matchId = searchParams.get("matchId");
+      const myUserId = localStorage.getItem(STORAGE_KEYS.userId);
+
+      if (!matchId || !myUserId) {
+        console.error("matchId または userId がありません");
+        setPhase("vote");
+        setIsWinner(false);
+        return;
+      }
+
+      const matchRef = doc(db, "matches", matchId);
+      const matchSnap = await getDoc(matchRef);
+
+      if (!matchSnap.exists()) {
+        console.error("match ドキュメントが存在しません");
+        setPhase("vote");
+        setIsWinner(false);
+        return;
+      }
+
+      const matchData = matchSnap.data();
+      const winnerUserId = matchData.winnerUserId;
+
+      const winner = myUserId === winnerUserId;
+
+      setIsWinner(winner);
+      setPhase(winner ? "collect" : "vote");
+    } catch (error) {
+      console.error("勝敗判定に失敗しました", error);
+      setIsWinner(false);
+      setPhase("vote");
+    } finally {
+      setLoadingResult(false);
+    }
+  };
+
+  decidePhase();
+}, [searchParams]);
 
   useEffect(() => {
     return () => {
@@ -834,9 +886,8 @@ export default function VotePage() {
   };
 
   const handleFinish = () => {
-    setIsWinner(true);
-    setPhase("vote");
-  };
+  setPhase("vote");
+};
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.voteCandidates, JSON.stringify(candidates));
@@ -845,6 +896,23 @@ export default function VotePage() {
   const handleHome = () => navigate("/");
   const handlePlayAgain = () => navigate("/games");
   const handleQuit = () => navigate("/ranking");
+
+  if (loadingResult || phase === null) {
+  return (
+    <div
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        background: "#fff",
+        fontWeight: 700,
+      }}
+    >
+      読み込み中...
+    </div>
+  );
+}
 
   if (phase === "collect") {
 
