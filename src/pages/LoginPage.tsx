@@ -83,6 +83,15 @@ export default function Room() {
 
     const uid = auth.currentUser.uid;
 
+    // users.status が called になったら通知
+    const userDocRef = doc(db, 'apps', APP_ID, 'users', uid);
+    const unsubUser = onSnapshot(userDocRef, (docSnap) => {
+      const data = docSnap.data();
+      if (data?.status === 'called') {
+        console.log('呼び出されました');
+      }
+    });
+
     // 自分の予約情報を監視（店側でstatusが変わったのを検知するため）
     const myDocRef = doc(db, 'apps', APP_ID, 'general', tenpoId, 'queue', uid);
     const unsubMyDoc = onSnapshot(myDocRef, (docSnap) => {
@@ -114,6 +123,7 @@ export default function Room() {
     });
 
     return () => {
+      unsubUser();
       unsubMyDoc();
       unsubQueue();
     };
