@@ -7,5 +7,6 @@ export const STORAGE_KEYS = {
   matchId: "wh.matchId",
   tenpoId: "wh.tenpoId",
   voteCandidates: "wh.vote.candidates",
+  userId: "wh.userId",
   songAdded: "wh.songAdded",
 };
