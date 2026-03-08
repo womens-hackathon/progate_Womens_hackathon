@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { useWaitingCount } from "../hooks/useWaitingCount";
 
 // 各予測の結果
 type GuessResult = {
@@ -30,7 +29,6 @@ function calcHitBlow(secret: number[], guess: number[]) {
 }
 
 export default function HitAndBlow({ onFinished }: { onFinished?: (score: number) => void }) {
-  const waitingCount = useWaitingCount();
   const [secret, setSecret] = useState<number[]>(generateSecret);
   const [input, setInput] = useState<number[]>([]); // 現在入力中の数字（最大4桁）
   const [history, setHistory] = useState<GuessResult[]>([]); // 予測の履歴
@@ -80,9 +78,6 @@ export default function HitAndBlow({ onFinished }: { onFinished?: (score: number
       {/* ヘッダー */}
       <div style={headerStyle}>
         <span style={headerTitleStyle}>Hit & Blow</span>
-        {waitingCount !== null && (
-          <span style={waitingBadgeStyle}>あと{waitingCount}人待ち</span>
-        )}
       </div>
 
       <div style={contentStyle}>
@@ -191,17 +186,6 @@ const headerTitleStyle: React.CSSProperties = {
   color: "#111",
 };
 
-const waitingBadgeStyle: React.CSSProperties = {
-  marginLeft: "auto",
-  fontSize: 15,
-  fontWeight: 900,
-  color: "#fff",
-  background: "#ef4444",
-  border: "2px solid #111",
-  borderRadius: 999,
-  padding: "5px 14px",
-  boxShadow: "2px 2px 0px #111",
-};
 
 const contentStyle: React.CSSProperties = {
   flex: 1,

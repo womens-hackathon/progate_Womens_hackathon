@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import stingraySrc from "../assets/stingray.png";
-import { useWaitingCount } from "../hooks/useWaitingCount";
 
 type Phase = "ready" | "playing" | "collapsing" | "gameover";
 
@@ -46,7 +45,6 @@ export default function RayStack({ onFinished }: { onFinished?: (score: number) 
   const physicsRef = useRef<PhysicsLayer[]>([]);
   const [phase, setPhase] = useState<Phase>("ready");
   const [score, setScore] = useState(0);
-  const waitingCount = useWaitingCount();
 
   // ゲーム状態（アニメーションループからアクセスするためref管理）
   const gs = useRef({
@@ -332,9 +330,6 @@ export default function RayStack({ onFinished }: { onFinished?: (score: number) 
     <div style={containerStyle}>
       <div style={headerStyle}>
         <span style={headerTitleStyle}>エイ積みゲーム</span>
-        {waitingCount !== null && (
-          <span style={waitingBadgeStyle}>あと{waitingCount}人待ち</span>
-        )}
       </div>
 
       <div style={{ position: "relative" }}>
@@ -397,17 +392,6 @@ const headerTitleStyle: React.CSSProperties = {
   color: "#111",
 };
 
-const waitingBadgeStyle: React.CSSProperties = {
-  marginLeft: "auto",
-  fontSize: 15,
-  fontWeight: 900,
-  color: "#fff",
-  background: "#ef4444",
-  border: "2px solid #111",
-  borderRadius: 999,
-  padding: "5px 14px",
-  boxShadow: "2px 2px 0px #111",
-};
 
 const canvasStyle: React.CSSProperties = {
   display: "block",
