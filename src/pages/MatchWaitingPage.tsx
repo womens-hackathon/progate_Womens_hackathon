@@ -284,11 +284,6 @@ export default function MatchWaitingPage() {
     };
   }, [tenpoId]);
 
-  const handleStart = () => {
-    if (!matchId) return;
-    navigate(`/play?game=${encodeURIComponent(gameKey)}&matchId=${matchId}`);
-  };
-
   return (
     <div style={pageStyle}>
       <div style={cardStyle}>
@@ -382,17 +377,6 @@ const dotStyle = (ok: boolean): React.CSSProperties => ({
   boxShadow: "0 0 6px rgba(34,211,238,0.9)",
 });
 
-const primaryButtonStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#38bdf8",
-  color: "#0f172a",
-  border: "2px solid #fff",
-  borderRadius: 999,
-  padding: "12px 0",
-  fontSize: 16,
-  fontWeight: 800,
-  cursor: "pointer",
-};
 
 function createMemoryBoard(turnUserId: string) {
   const values = [1, 2, 3, 4, 5, 6];
