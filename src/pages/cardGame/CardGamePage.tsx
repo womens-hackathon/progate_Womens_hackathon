@@ -245,6 +245,57 @@ export default function CardGamePage({
     return () => window.clearInterval(id);
   }, [appId, demo, match, matchId]);
 
+  useEffect(() => {
+    if (demo) return;
+    if (!match || !match.board || !uid) return;
+    if (match.status !== "playing") return;
+    if (match.memberIds.length < 2) return;
+    if (match.board.turnUserId === uid) return;
+    if (match.board.phase !== "idle") return;
+
+    const updatedAt = (match as any).updatedAt;
+    const updatedAtMs =
+      typeof updatedAt?.toMillis === "function"
+        ? updatedAt.toMillis()
+        : null;
+
+    const tenpoId =
+      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+    const matchRef = doc(
+      db,
+      `apps/${appId}/general/${tenpoId}/matches/${matchId}`
+    );
+
+    const timeoutId = window.setTimeout(() => {
+      void runTransaction(db, async (tx) => {
+        const snap = await tx.get(matchRef);
+        if (!snap.exists()) return;
+        const current = snap.data() as CardGameMatch & { updatedAt?: any };
+        if (current.status !== "playing") return;
+        if (current.memberIds.length < 2) return;
+        if (current.board.turnUserId === uid) return;
+        if (current.board.phase !== "idle") return;
+
+        const currentUpdatedAt = (current as any).updatedAt;
+        const currentUpdatedAtMs =
+          typeof currentUpdatedAt?.toMillis === "function"
+            ? currentUpdatedAt.toMillis()
+            : null;
+
+        if (updatedAtMs && currentUpdatedAtMs && currentUpdatedAtMs !== updatedAtMs) {
+          return;
+        }
+
+        tx.update(matchRef, {
+          "board.turnUserId": uid,
+          updatedAt: serverTimestamp(),
+        });
+      });
+    }, 10000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [appId, demo, match, matchId, uid]);
+
   const cards = useMemo(() => {
     if (!match?.board?.cards) return [];
     return Object.values(match.board.cards).sort((a, b) => a.order - b.order);
