@@ -4,7 +4,7 @@ import { doc, onSnapshot } from "firebase/firestore";
 import { db, ensureAuth } from "../firebase";
 import { APP_ID, STORAGE_KEYS } from "../appConfig";
 
-type ResultState = "loading" | "waiting" | "win" | "lose" | "error";
+type ResultState = "loading" | "waiting" | "win" | "lose" | "draw" | "error";
 
 export default function ResultPage() {
   const navigate = useNavigate();
@@ -38,8 +38,12 @@ export default function ResultPage() {
             return;
           }
           const data = snap.data() as { status?: string; winnerUserId?: string | null };
-          if (data.status !== "ended" || !data.winnerUserId) {
+          if (data.status !== "ended") {
             setState("waiting");
+            return;
+          }
+          if (!data.winnerUserId) {
+            setState("draw");
             return;
           }
           setState(data.winnerUserId === user.uid ? "win" : "lose");
@@ -63,6 +67,7 @@ export default function ResultPage() {
           {state === "waiting" && "結果待ち"}
           {state === "win" && "勝ち！"}
           {state === "lose" && "負け…"}
+          {state === "draw" && "引き分け（両方負け）"}
           {state === "error" && "エラー"}
         </h1>
         {(state === "waiting" || state === "loading") && (
@@ -70,11 +75,8 @@ export default function ResultPage() {
         )}
         {state === "error" && <p style={descStyle}>{errorText}</p>}
 
-        <button
-          onClick={() => navigate("/vote")}
-          style={primaryButtonStyle}
-        >
-          次へ進む
+        <button onClick={() => navigate("/vote")} style={primaryButtonStyle}>
+          次へ
         </button>
       </div>
     </div>

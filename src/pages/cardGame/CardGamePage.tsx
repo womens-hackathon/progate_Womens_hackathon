@@ -86,6 +86,7 @@ export default function CardGamePage({
   const [match, setMatch] = useState<CardGameMatch | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState("");
+  const [remainSec, setRemainSec] = useState<number | null>(null);
 
   useEffect(() => {
     if (demo) {
@@ -183,6 +184,114 @@ export default function CardGamePage({
         updatedAt: serverTimestamp(),
       });
     });
+  }, [appId, demo, match, matchId, uid]);
+
+  useEffect(() => {
+    if (demo) return;
+    if (!match || match.status !== "playing") {
+      setRemainSec(null);
+      return;
+    }
+
+    const LIMIT_SEC = 60;
+    const createdAt = (match as any).createdAt;
+    const createdAtMs =
+      typeof createdAt?.toMillis === "function" ? createdAt.toMillis() : null;
+    const startedAt = createdAtMs ?? Date.now();
+
+    const tick = () => {
+      const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+      const remain = Math.max(0, LIMIT_SEC - elapsed);
+      setRemainSec(remain);
+      if (remain <= 0) {
+        void runTransaction(db, async (tx) => {
+          const tenpoId =
+            localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+          const matchRef = doc(
+            db,
+            `apps/${appId}/general/${tenpoId}/matches/${matchId}`
+          );
+          const snap = await tx.get(matchRef);
+          if (!snap.exists()) return;
+          const current = snap.data() as CardGameMatch;
+          if (current.status !== "playing") return;
+
+          const entries = Object.entries(current.members ?? {});
+          const [firstId, first] = entries[0] ?? [];
+          const [secondId, second] = entries[1] ?? [];
+          const firstScore = first?.score ?? 0;
+          const secondScore = second?.score ?? 0;
+          const winnerUserId =
+            firstScore === secondScore
+              ? null
+              : firstScore > secondScore
+              ? firstId
+              : secondId ?? null;
+
+          tx.update(matchRef, {
+            status: "ended",
+            winnerUserId,
+            "board.phase": "ended",
+            updatedAt: serverTimestamp(),
+          });
+        });
+      }
+    };
+
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, [appId, demo, match, matchId]);
+
+  useEffect(() => {
+    if (demo) return;
+    if (!match || !match.board || !uid) return;
+    if (match.status !== "playing") return;
+    if (match.memberIds.length < 2) return;
+    if (match.board.turnUserId === uid) return;
+    if (match.board.phase !== "idle") return;
+
+    const updatedAt = (match as any).updatedAt;
+    const updatedAtMs =
+      typeof updatedAt?.toMillis === "function"
+        ? updatedAt.toMillis()
+        : null;
+
+    const tenpoId =
+      localStorage.getItem(STORAGE_KEYS.tenpoId) ?? "default";
+    const matchRef = doc(
+      db,
+      `apps/${appId}/general/${tenpoId}/matches/${matchId}`
+    );
+
+    const timeoutId = window.setTimeout(() => {
+      void runTransaction(db, async (tx) => {
+        const snap = await tx.get(matchRef);
+        if (!snap.exists()) return;
+        const current = snap.data() as CardGameMatch & { updatedAt?: any };
+        if (current.status !== "playing") return;
+        if (current.memberIds.length < 2) return;
+        if (current.board.turnUserId === uid) return;
+        if (current.board.phase !== "idle") return;
+
+        const currentUpdatedAt = (current as any).updatedAt;
+        const currentUpdatedAtMs =
+          typeof currentUpdatedAt?.toMillis === "function"
+            ? currentUpdatedAt.toMillis()
+            : null;
+
+        if (updatedAtMs && currentUpdatedAtMs && currentUpdatedAtMs !== updatedAtMs) {
+          return;
+        }
+
+        tx.update(matchRef, {
+          "board.turnUserId": uid,
+          updatedAt: serverTimestamp(),
+        });
+      });
+    }, 10000);
+
+    return () => window.clearTimeout(timeoutId);
   }, [appId, demo, match, matchId, uid]);
 
   const cards = useMemo(() => {
@@ -388,6 +497,11 @@ export default function CardGamePage({
 
           <div className="text-sm text-white/80">
             {match.board.matchedPairCount} / 6 ペア
+            {remainSec !== null && (
+              <span className="ml-3 rounded-full bg-white/10 px-2 py-1 text-xs font-bold">
+                残り {remainSec}s
+              </span>
+            )}
           </div>
         </section>
 

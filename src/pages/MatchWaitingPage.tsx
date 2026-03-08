@@ -26,6 +26,7 @@ export default function MatchWaitingPage() {
   const userIdRef = useRef<string | null>(null);
   const matchIdRef = useRef<string | null>(null);
   const stateRef = useRef<MatchState>("finding");
+  const countdownStartedRef = useRef(false);
 
   const gameKey = useMemo(() => {
     const fromQuery = params.get("game");
@@ -89,7 +90,8 @@ export default function MatchWaitingPage() {
               members?: Record<string, { joinedAt?: unknown; nickname?: string }>;
             };
 
-            const currentCount = data.memberCount ?? data.memberIds?.length ?? 0;
+            const currentMembers = data.memberIds ?? [];
+            const currentCount = data.memberCount ?? currentMembers.length;
             if (currentCount < 1) {
               invalidMatch = true;
               tx.update(matchRef, {
@@ -198,21 +200,22 @@ export default function MatchWaitingPage() {
   useEffect(() => {
     if (state !== "matched" || !matchId) {
       setCountdown(null);
+      countdownStartedRef.current = false;
       return;
     }
 
-    setCountdown(5);
-    const id = window.setInterval(() => {
-      setCountdown((prev) => {
-        if (prev == null) return prev;
-        if (prev <= 1) {
-          clearInterval(id);
-          navigate(`/play?game=${encodeURIComponent(gameKey)}&matchId=${matchId}`);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    if (countdownStartedRef.current) return;
+    countdownStartedRef.current = true;
+    const deadline = Date.now() + 5000;
+    const tick = () => {
+      const remain = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setCountdown(remain);
+      if (remain <= 0) {
+        navigate(`/play?game=${encodeURIComponent(gameKey)}&matchId=${matchId}`);
+      }
+    };
+    tick();
+    const id = window.setInterval(tick, 500);
 
     return () => clearInterval(id);
   }, [gameKey, matchId, navigate, state]);
