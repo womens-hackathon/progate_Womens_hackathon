@@ -4,7 +4,7 @@ import { collection, doc, getDocs, onSnapshot } from "firebase/firestore";
 import { db, ensureAuth } from "../firebase";
 import { APP_ID, STORAGE_KEYS } from "../appConfig";
 
-type ResultState = "loading" | "waiting" | "win" | "lose" | "error";
+type ResultState = "loading" | "waiting" | "win" | "lose" | "draw" | "error";
 
 interface ScoreEntry { uid: string; score: number; nickname?: string }
 
@@ -52,6 +52,10 @@ export default function ResultPage() {
             setState("waiting");
             return;
           }
+          if (!data.winnerUserId) {
+            setState("draw");
+            return;
+          }
           setState(data.winnerUserId === user.uid ? "win" : "lose");
 
           // スコアを取得
@@ -86,6 +90,7 @@ export default function ResultPage() {
           {state === "waiting" && "結果待ち"}
           {state === "win" && "勝ち！"}
           {state === "lose" && "負け…"}
+          {state === "draw" && "引き分け（両方負け）"}
           {state === "error" && "エラー"}
         </h1>
         {(state === "waiting" || state === "loading") && (

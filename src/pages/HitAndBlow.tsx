@@ -28,7 +28,11 @@ function calcHitBlow(secret: number[], guess: number[]) {
   return { hit, blow };
 }
 
-export default function HitAndBlow({ onFinished }: { onFinished?: (score: number) => void }) {
+export default function HitAndBlow({
+  onFinished,
+}: {
+  onFinished?: (payload?: { tries: number }) => void;
+}) {
   const [secret, setSecret] = useState<number[]>(generateSecret);
   const [input, setInput] = useState<number[]>([]); // 現在入力中の数字（最大4桁）
   const [history, setHistory] = useState<GuessResult[]>([]); // 予測の履歴
@@ -69,10 +73,9 @@ export default function HitAndBlow({ onFinished }: { onFinished?: (score: number
 
   useEffect(() => {
     if (cleared) {
-      onFinished?.(history.length);
+      onFinished?.({ tries: history.length });
     }
-  }, [cleared, onFinished]);
-
+  }, [cleared, history.length, onFinished]);
   return (
     <div style={containerStyle}>
       {/* ヘッダー */}
