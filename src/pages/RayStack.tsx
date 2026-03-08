@@ -38,7 +38,11 @@ function drawRayAt(
   ctx.drawImage(img, x, y, w, DRAW_H);
 }
 
-export default function RayStack({ onFinished }: { onFinished?: (score: number) => void }) {
+export default function RayStack({
+  onFinished,
+}: {
+  onFinished?: (score: number) => void | Promise<void>;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
   const imgRef = useRef<HTMLImageElement | null>(null);

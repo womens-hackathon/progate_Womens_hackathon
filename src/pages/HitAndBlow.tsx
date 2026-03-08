@@ -31,7 +31,7 @@ function calcHitBlow(secret: number[], guess: number[]) {
 export default function HitAndBlow({
   onFinished,
 }: {
-  onFinished?: (payload?: { tries: number }) => void;
+  onFinished?: (payload?: { tries: number }) => void | Promise<void>;
 }) {
   const [secret, setSecret] = useState<number[]>(generateSecret);
   const [input, setInput] = useState<number[]>([]); // 現在入力中の数字（最大4桁）

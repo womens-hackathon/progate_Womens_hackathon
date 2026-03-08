@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 // ゲームの進行状態
 type Phase = "ready" | "playing" | "result";
 
-export default function TapGame({ onFinished }: { onFinished?: (score: number) => void }) {
+export default function TapGame({
+  onFinished,
+}: {
+  onFinished?: (score: number) => void | Promise<void>;
+}) {
   const DURATION_SEC = 10; // ゲームの制限時間（秒）
   //  値が変わると画面が再描画される
   const [phase, setPhase] = useState<Phase>(onFinished ? "playing" : "ready"); // 対戦モードは即スタート
