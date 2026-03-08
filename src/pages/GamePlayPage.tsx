@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { doc, onSnapshot, runTransaction, serverTimestamp } from "firebase/firestore";
+import { doc, onSnapshot, runTransaction, serverTimestamp, type Transaction } from "firebase/firestore";
 import TapGame from "./TapGame";
 import RayStack from "./RayStack";
 import HitAndBlow from "./HitAndBlow";
@@ -30,7 +30,7 @@ export default function GamePlayPage() {
         `apps/${APP_ID}/general/${tenpoId}/matches/${matchId}`
       );
 
-      await runTransaction(db, async (tx) => {
+      await runTransaction(db, async (tx: Transaction) => {
         const snap = await tx.get(matchRef);
         if (!snap.exists()) return;
         const current = snap.data() as {

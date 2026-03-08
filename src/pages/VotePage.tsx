@@ -763,6 +763,8 @@ export default function VotePage() {
 
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+
+  const initialVotes = parseInt(searchParams.get("votes") ?? "1", 10);
   
   const [phase, setPhase] = useState<"collect" | "vote" | null>(null);
   const [isWinner, setIsWinner] = useState(false);
@@ -770,6 +772,7 @@ export default function VotePage() {
   
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [votedId, setVotedId] = useState<string | null>(null);
+  const [votesRemaining, setVotesRemaining] = useState(initialVotes);
   const [hasAdded, setHasAdded] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [audio] = useState(() => new Audio());
@@ -797,13 +800,6 @@ export default function VotePage() {
         setIsWinner(false);
         return;
       }
-  const initialVotes = parseInt(searchParams.get("votes") ?? "1", 10);
-
-  const [candidates, setCandidates] = useState<Candidate[]>([]);
-
-  const [votedId, setVotedId] = useState<string | null>(null);
-  const [votesRemaining, setVotesRemaining] = useState(initialVotes);
-
       const matchData = matchSnap.data();
       const winnerUserId = matchData.winnerUserId;
 
