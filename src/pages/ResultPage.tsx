@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { collection, doc, getDocs, onSnapshot } from "firebase/firestore";
+import { doc, onSnapshot } from "firebase/firestore";
 import { db, ensureAuth } from "../firebase";
 import { APP_ID, STORAGE_KEYS } from "../appConfig";
 
@@ -52,7 +52,8 @@ export default function ResultPage() {
             status?: string;
             winnerUserId?: string | null;
             isDraw?: boolean;
-            members?: Record<string, { nickname?: string }>;
+            memberIds?: string[];
+            members?: Record<string, { nickname?: string; score?: number; hitblowTries?: number | null }>;
           };
           if (data.status !== "ended" || (!data.winnerUserId && !data.isDraw)) {
             setState("waiting");
@@ -64,18 +65,18 @@ export default function ResultPage() {
             setState(data.winnerUserId === user.uid ? "win" : "lose");
           }
 
-          // スコアを取得
-          try {
-            const scoresSnap = await getDocs(collection(db, `${matchPath}/scores`));
-            const entries: ScoreEntry[] = scoresSnap.docs.map((d) => {
-              const s = d.data() as { uid: string; score: number };
-              const nickname = data.members?.[s.uid]?.nickname;
-              return { uid: s.uid, score: s.score, nickname };
-            });
-            setScores(entries);
-          } catch {
-            // スコア取得失敗は無視
-          }
+          // membersフィールドからスコアを取得
+          const gameKey = localStorage.getItem(STORAGE_KEYS.gameKey) ?? "";
+          const myNickname = localStorage.getItem(STORAGE_KEYS.nickname) ?? undefined;
+          const entries: ScoreEntry[] = (data.memberIds ?? Object.keys(data.members ?? {})).map((uid) => {
+            const m = data.members?.[uid];
+            const rawScore = gameKey === "hitblow"
+              ? (m?.hitblowTries ?? null)
+              : (m?.score ?? null);
+            const nickname = uid === user.uid ? myNickname : (m?.nickname ?? undefined);
+            return { uid, score: rawScore ?? 0, nickname };
+          });
+          setScores(entries);
         });
       } catch (error) {
         console.error(error);
@@ -106,14 +107,18 @@ export default function ResultPage() {
 
         {scores.length > 0 && (
           <div style={scoresContainerStyle}>
-            {scores.map((entry) => (
-              <div key={entry.uid} style={scoreRowStyle}>
-                <span style={scoreNicknameStyle}>
-                  {entry.uid === myUid ? "あなた" : (entry.nickname ?? "相手")}
-                </span>
-                <span style={scoreValueStyle}>{entry.score}</span>
-              </div>
-            ))}
+            {scores.map((entry) => {
+              const isHitblow = localStorage.getItem(STORAGE_KEYS.gameKey) === "hitblow";
+              const label = isHitblow ? `${entry.score}回` : `${entry.score}`;
+              return (
+                <div key={entry.uid} style={scoreRowStyle}>
+                  <span style={scoreNicknameStyle}>
+                    {entry.uid === myUid ? "あなた" : (entry.nickname ?? "相手")}
+                  </span>
+                  <span style={scoreValueStyle}>{label}</span>
+                </div>
+              );
+            })}
           </div>
         )}
 

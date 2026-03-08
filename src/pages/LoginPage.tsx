@@ -20,6 +20,8 @@ export default function Room() {
   const navigate = useNavigate();
   const { id: tenpoId } = useParams();
   const [userName, setUserName] = useState('');
+  const [partySize, setPartySize] = useState(1);
+  const [childCount, setChildCount] = useState(0);
   const [isRegistered, setIsRegistered] = useState(false);
   const [waitingCount, setWaitingCount] = useState(0);
   const [myOrder, setMyOrder] = useState<number | null>(null);
@@ -139,11 +141,35 @@ export default function Room() {
           </h1>
           <input
             type="text"
-            placeholder="お名前を入力..."
+            placeholder="呼び出し時のお名前..."
             className="w-full border-4 border-black p-4 font-bold text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none"
             value={userName}
             onChange={(e) => setUserName(e.target.value)}
           />
+          <div className="flex items-center gap-3">
+            <label className="font-black text-sm uppercase tracking-widest whitespace-nowrap">人数</label>
+            <input
+              type="number"
+              min={1}
+              max={20}
+              className="flex-1 border-4 border-black p-4 font-bold text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none"
+              value={partySize}
+              onChange={(e) => setPartySize(Math.max(1, parseInt(e.target.value) || 1))}
+            />
+            <span className="font-black text-sm">人</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <label className="font-black text-sm uppercase tracking-widest whitespace-nowrap">うち子ども</label>
+            <input
+              type="number"
+              min={0}
+              max={partySize}
+              className="flex-1 border-4 border-black p-4 font-bold text-lg shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] outline-none"
+              value={childCount}
+              onChange={(e) => setChildCount(Math.min(partySize, Math.max(0, parseInt(e.target.value) || 0)))}
+            />
+            <span className="font-black text-sm">人</span>
+          </div>
           <button
             onClick={handleRegister}
             className="w-full bg-[#ff3344] text-white font-black py-4 text-xl border-4 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
